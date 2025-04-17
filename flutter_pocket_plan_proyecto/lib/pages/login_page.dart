@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/create_user_page.dart';
 
 /// Paleta de colores se trato de hacer un diseño moderno y elegante para la aplicación
 class AppColors {
@@ -216,6 +217,12 @@ class _IniciarSesionState extends State<IniciarSesion> {
                   TextButton.icon(
                     onPressed: () {
                       //Ruta para Crear usuario
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CrearUsuarioScreen(),
+                        ),
+                      );
                     },
                     icon: Icon(
                       Icons.person_add,
