@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/create_user_page.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/recover_password_page.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/transition_page.dart';
 
 /// Paleta de colores se trato de hacer un diseño moderno y elegante para la aplicación
 class AppColors {
@@ -82,6 +83,20 @@ class _IniciarSesionState extends State<IniciarSesion> {
 
     if (_userError == null && _passError == null) {
       //Ruta para la transición
+      //Descomenta esta parte y agrega tu pantalla
+      /* Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => SplashScreen(
+                destination:
+                    CrearUsuarioScreen(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
+                message:
+                    'Bienvenido, ${_userController.text}', // Muestra el nombre del usuario
+              ),
+        ),
+      );*/
+      // Aqui termina la funcionalidad de navigator
     }
   }
 
@@ -419,7 +434,7 @@ class _IniciarSesionState extends State<IniciarSesion> {
               prefixIcon: Icon(Icons.lock_outline, color: borderColor),
               suffixIcon: IconButton(
                 icon: Icon(
-                  obscureText ? Icons.visibility : Icons.visibility_off,
+                  obscureText ? Icons.visibility_off : Icons.visibility,
                   color: borderColor,
                 ),
                 onPressed: onToggleVisibility,
