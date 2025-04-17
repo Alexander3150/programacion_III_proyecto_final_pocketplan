@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/code_validation_page.dart';
 
 /// Paleta de colores modernizados con fondo claro
 class RecoveryColors {
@@ -132,6 +133,10 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
       // Navegar a la pantalla de validación de código después de 2 segundos
       Future.delayed(const Duration(seconds: 2), () {
         // Codigo para navegar a la pantalla para validar el codigo de recuperación
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CodeValidationPage()),
+        );
       });
     }
   }
