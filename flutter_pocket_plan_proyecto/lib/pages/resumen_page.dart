@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/registros_ie_page.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 class ResumenScreen extends StatelessWidget {
@@ -26,7 +27,7 @@ class _ResumenTabs extends StatefulWidget {
   State<_ResumenTabs> createState() => _ResumenTabsState();
 }
 
-class _ResumenTabsState extends State<_ResumenTabs> 
+class _ResumenTabsState extends State<_ResumenTabs>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final Color _ingresosColor = const Color(0xFF18BC9C);
@@ -52,9 +53,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2C3E50),
-            ),
+            colorScheme: const ColorScheme.light(primary: Color(0xFF2C3E50)),
           ),
           child: child!,
         );
@@ -79,10 +78,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildIngresosTab(context),
-              _buildEgresosTab(context),
-            ],
+            children: [_buildIngresosTab(context), _buildEgresosTab(context)],
           ),
         ),
       ],
@@ -125,13 +121,10 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const SizedBox(height: 8),
           Text(
-            _tabController.index == 0 
+            _tabController.index == 0
                 ? 'Total de ingresos en el periodo'
                 : 'Total de egresos en el periodo',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
       ),
@@ -153,15 +146,20 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 child: DropdownButton<String>(
                   value: _selectedPeriod,
                   isExpanded: true,
-                  items: ['Día', 'Semana', 'Mes', 'Año', 'Personalizado']
-                      .map((period) => DropdownMenuItem(
-                            value: period,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(period),
+                  items:
+                      ['Día', 'Semana', 'Mes', 'Año', 'Personalizado']
+                          .map(
+                            (period) => DropdownMenuItem(
+                              value: period,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Text(period),
+                              ),
                             ),
-                          ))
-                      .toList(),
+                          )
+                          .toList(),
                   onChanged: (value) {
                     if (value == 'Personalizado') {
                       _selectDateRange(context);
@@ -170,17 +168,21 @@ class _ResumenTabsState extends State<_ResumenTabs>
                     }
                   },
                 ),
-                ),
               ),
             ),
-          SizedBox(width: 10),
+          ), // ← Este cierre faltaba
+          const SizedBox(width: 10),
           FloatingActionButton(
             onPressed: () {
-              // Navegar a pantalla de agregar registros
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RegistroMovimientoScreen(),
+                ),
+              );
             },
-            backgroundColor: _tabController.index == 0 
-                ? _ingresosColor 
-                : _egresosColor,
+            backgroundColor:
+                _tabController.index == 0 ? _ingresosColor : _egresosColor,
             mini: true,
             child: const Icon(Icons.add, color: Colors.white),
           ),
@@ -204,14 +206,12 @@ class _ResumenTabsState extends State<_ResumenTabs>
             color: _tabController.index == 0 ? _ingresosColor : _egresosColor,
           ),
           insets: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width * 0.1),
+            horizontal: MediaQuery.of(context).size.width * 0.1,
+          ),
         ),
         labelColor: _tabController.index == 0 ? _ingresosColor : _egresosColor,
         unselectedLabelColor: Colors.grey[600],
-        tabs: const [
-          Tab(text: 'INGRESOS'),
-          Tab(text: 'EGRESOS'),
-        ],
+        tabs: const [Tab(text: 'INGRESOS'), Tab(text: 'EGRESOS')],
         onTap: (index) => setState(() {}),
       ),
     );
@@ -237,22 +237,24 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: _ResumenList(items: [
-              _ResumenItem(
-                icon: Icons.attach_money,
-                label: 'Salario',
-                value: '45%',
-                amount: '5,000.00',
-                color: Color(0xFF18BC9C),
-              ),
-              _ResumenItem(
-                icon: Icons.business,
-                label: 'Freelance',
-                value: '30%',
-                amount: '3,300.00',
-                color: Color(0xFF2ECC71),
-              ),
-            ]),
+            child: _ResumenList(
+              items: [
+                _ResumenItem(
+                  icon: Icons.attach_money,
+                  label: 'Salario',
+                  value: '45%',
+                  amount: '5,000.00',
+                  color: Color(0xFF18BC9C),
+                ),
+                _ResumenItem(
+                  icon: Icons.business,
+                  label: 'Freelance',
+                  value: '30%',
+                  amount: '3,300.00',
+                  color: Color(0xFF2ECC71),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -285,13 +287,15 @@ class _ResumenTabsState extends State<_ResumenTabs>
                   label: 'Compras',
                   value: '35%',
                   amount: '1,500.00',
-                  color: Color(0xFFE74C3C)),
+                  color: Color(0xFFE74C3C),
+                ),
                 _ResumenItem(
                   icon: Icons.home,
                   label: 'Renta',
                   value: '25%',
                   amount: '1,100.00',
-                  color: Color(0xFFF39C12)),
+                  color: Color(0xFFF39C12),
+                ),
               ],
             ),
           ),
@@ -391,9 +395,7 @@ class _ResumenItem extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -403,17 +405,15 @@ class _ResumenItem extends StatelessWidget {
           ),
           child: Icon(icon, color: color),
         ),
-        title: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(value),
         trailing: Text(
           '\$$amount',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Color(0xFF2C3E50)),
+            color: Color(0xFF2C3E50),
+          ),
         ),
       ),
     );
