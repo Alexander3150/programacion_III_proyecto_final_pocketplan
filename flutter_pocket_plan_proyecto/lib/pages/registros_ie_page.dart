@@ -1,7 +1,7 @@
-// Pantalla creada por José Morales
 import 'package:flutter/material.dart';
 import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/resumen_page.dart';
+//import 'package:flutter_pocket_plan_proyecto/pages/tarjetas_page.dart';
 
 class RegistroMovimientoScreen extends StatelessWidget {
   const RegistroMovimientoScreen({super.key});
@@ -22,10 +22,11 @@ class _RegistroMovimientoTabs extends StatefulWidget {
   const _RegistroMovimientoTabs();
 
   @override
-  State<_RegistroMovimientoTabs> createState() => _RegistroMovimientoTabsState();
+  State<_RegistroMovimientoTabs> createState() =>
+      _RegistroMovimientoTabsState();
 }
 
-class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs> 
+class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -37,49 +38,46 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   String _concepto = '';
   String _etiqueta = '';
   String _metodoPago = 'Efectivo';
-  String? _tarjetaSeleccionada;
+
+  // Nuevas variables para el sistema de tarjetas
+  String? _selectedCardType;
+  String? _selectedCard;
+  String? _creditPaymentOption;
+  int? _installments;
 
   final List<String> _etiquetasIngresos = [
-    'Salario', 'Freelance', 'Inversiones', 'Regalo', 'Otros'
+    'Salario',
+    'Freelance',
+    'Inversiones',
+    'Regalo',
+    'Otros',
   ];
 
   final List<String> _etiquetasEgresos = [
-    'Comida', 'Transporte', 'Entretenimiento', 'Servicios', 'Renta', 'Otros'
+    'Comida',
+    'Transporte',
+    'Entretenimiento',
+    'Servicios',
+    'Renta',
+    'Otros',
   ];
 
   final List<String> _metodosPago = [
-    'Efectivo', 'Tarjeta Débito', 'Tarjeta Crédito'
+    'Efectivo',
+    'Tarjeta Débito',
+    'Tarjeta Crédito',
   ];
 
-  // Lista simulada de tarjetas registradas
-  final List<Map<String, dynamic>> _tarjetasRegistradas = [
-    {
-      'tipo': 'Tarjeta Crédito',
-      'nombre': 'Visa Platinum',
-      'ultimosDigitos': '•••• 4567',
-      'icono': Icons.credit_card,
-      'color': Colors.blue
-    },
-    {
-      'tipo': 'Tarjeta Débito',
-      'nombre': 'Cuenta Principal',
-      'ultimosDigitos': '•••• 8910',
-      'icono': Icons.account_balance,
-      'color': Colors.green
-    },
-    {
-      'tipo': 'Tarjeta Crédito',
-      'nombre': 'Mastercard Gold',
-      'ultimosDigitos': '•••• 1234',
-      'icono': Icons.credit_card,
-      'color': Colors.orange
-    },
-  ];
+  // Listas de tarjetas de ejemplo
+  final List<String> _debitCards = ['Visa ****1234', 'Mastercard ****5678'];
+  final List<String> _creditCards = ['Visa ****4321', 'Mastercard ****8765'];
+  final List<String> _creditOptions = ['Al contado', 'A cuotas'];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _etiqueta = _etiquetasIngresos.first;
   }
 
   @override
@@ -96,16 +94,14 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
             controller: _tabController,
             indicator: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
-              color: _tabController.index == 0 
-                  ? const Color(0xFF18BC9C) 
-                  : const Color(0xFFE74C3C),
+              color:
+                  _tabController.index == 0
+                      ? const Color(0xFF18BC9C)
+                      : const Color(0xFFE74C3C),
             ),
             labelColor: Colors.white,
             unselectedLabelColor: Colors.grey[600],
-            tabs: const [
-              Tab(text: 'INGRESO'),
-              Tab(text: 'EGRESO'),
-            ],
+            tabs: const [Tab(text: 'INGRESO'), Tab(text: 'EGRESO')],
           ),
         ),
 
@@ -154,7 +150,8 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Ingrese un concepto';
+                if (value == null || value.isEmpty)
+                  return 'Ingrese un concepto';
                 return null;
               },
               onSaved: (value) => _concepto = value!,
@@ -165,14 +162,20 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 labelText: 'Etiqueta',
                 border: OutlineInputBorder(),
               ),
-              items: _etiquetasIngresos
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
+              items:
+                  _etiquetasIngresos
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Seleccione una etiqueta';
+                if (value == null || value.isEmpty)
+                  return 'Seleccione una etiqueta';
                 return null;
               },
-              onChanged: (value) => _etiqueta = value!,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _etiqueta = value);
+                }
+              },
             ),
             const SizedBox(height: 30),
             ElevatedButton(
@@ -181,7 +184,10 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 backgroundColor: const Color(0xFF18BC9C),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('REGISTRAR INGRESO', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'REGISTRAR INGRESO',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -221,7 +227,8 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Ingrese un concepto';
+                if (value == null || value.isEmpty)
+                  return 'Ingrese un concepto';
                 return null;
               },
               onSaved: (value) => _concepto = value!,
@@ -232,14 +239,20 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 labelText: 'Etiqueta',
                 border: OutlineInputBorder(),
               ),
-              items: _etiquetasEgresos
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
+              items:
+                  _etiquetasEgresos
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Seleccione una etiqueta';
+                if (value == null || value.isEmpty)
+                  return 'Seleccione una etiqueta';
                 return null;
               },
-              onChanged: (value) => _etiqueta = value!,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _etiqueta = value);
+                }
+              },
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
@@ -248,34 +261,213 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 border: OutlineInputBorder(),
               ),
               value: _metodoPago,
-              items: _metodosPago
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
+              items:
+                  _metodosPago
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
               onChanged: (value) {
-                setState(() {
-                  _metodoPago = value!;
-                  _tarjetaSeleccionada = null;
-                });
+                if (value != null) {
+                  setState(() {
+                    _metodoPago = value;
+                    _selectedCard = null;
+                    _selectedCardType = null;
+                    _creditPaymentOption = null;
+                    _installments = null;
+                  });
+                }
               },
             ),
-            
-            // Mostrar selector de tarjetas solo si se seleccionó tarjeta
-            if (_metodoPago == 'Tarjeta Débito' || _metodoPago == 'Tarjeta Crédito')
+
+            // Sección de tarjetas (solo para pagos con tarjeta)
+            if (_metodoPago == 'Tarjeta Débito' ||
+                _metodoPago == 'Tarjeta Crédito')
               Padding(
                 padding: const EdgeInsets.only(top: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Seleccionar Tarjeta',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      'Detalles de la Tarjeta',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    ..._buildListaTarjetas(),
+                    const SizedBox(height: 12),
+
+                    // Fila para tipo de tarjeta y selección (ahora en misma fila)
+                    Row(
+                      children: [
+                        // Tipo de tarjeta (ocupará 1/3 del espacio)
+                        Expanded(
+                          flex: 1,
+                          child: DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: 'Tipo',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                            ),
+                            isExpanded: true,
+                            value: _selectedCardType,
+                            items: [
+                              if (_metodoPago == 'Tarjeta Débito')
+                                const DropdownMenuItem(
+                                  value: 'Débito',
+                                  child: Text(
+                                    'Débito',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              if (_metodoPago == 'Tarjeta Crédito')
+                                const DropdownMenuItem(
+                                  value: 'Crédito',
+                                  child: Text(
+                                    'Crédito',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCardType = value;
+                                _selectedCard = null;
+                                _creditPaymentOption = null;
+                                _installments = null;
+                              });
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Selección de tarjeta (ocupará 2/3 del espacio)
+                        Expanded(
+                          flex: 2,
+                          child: DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: 'Seleccione tarjeta',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
+                            ),
+                            isExpanded: true,
+                            value: _selectedCard,
+                            items:
+                                (_selectedCardType == 'Débito'
+                                        ? _debitCards
+                                        : _creditCards)
+                                    .map(
+                                      (card) => DropdownMenuItem(
+                                        value: card,
+                                        child: Text(
+                                          card,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCard = value;
+                                if (_selectedCardType == 'Crédito') {
+                                  _creditPaymentOption = null;
+                                  _installments = null;
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Opciones para tarjeta de crédito (debajo, en columna normal)
+                    if (_selectedCardType == 'Crédito' && _selectedCard != null)
+                      Column(
+                        children: [
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: 'Opción de pago',
+                              border: OutlineInputBorder(),
+                            ),
+                            value: _creditPaymentOption,
+                            items:
+                                _creditOptions
+                                    .map(
+                                      (option) => DropdownMenuItem(
+                                        value: option,
+                                        child: Text(option),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _creditPaymentOption = value;
+                                if (value != 'A cuotas') {
+                                  _installments = null;
+                                }
+                              });
+                            },
+                          ),
+
+                          if (_creditPaymentOption == 'A cuotas')
+                            Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Número de cuotas',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (_creditPaymentOption == 'A cuotas' &&
+                                        (value == null || value.isEmpty)) {
+                                      return 'Ingrese número de cuotas';
+                                    }
+                                    return null;
+                                  },
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _installments = int.tryParse(value);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+
+                    // Enlace para agregar tarjetas
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ResumenScreen(),
+                          ),
+                        ).then((_) {
+                          setState(() {});
+                        });
+                      },
+                      child: const Text(
+                        '¿No ves tu tarjeta? Agrega una nueva en la sección Tarjetas',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            
+
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: _submitForm,
@@ -283,45 +475,15 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                 backgroundColor: const Color(0xFFE74C3C),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('REGISTRAR EGRESO', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'REGISTRAR EGRESO',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  List<Widget> _buildListaTarjetas() {
-    // Filtrar tarjetas según el tipo seleccionado
-    final tarjetasFiltradas = _tarjetasRegistradas.where((tarjeta) {
-      return tarjeta['tipo'] == _metodoPago;
-    }).toList();
-
-    return tarjetasFiltradas.map((tarjeta) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 10),
-        child: ListTile(
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: tarjeta['color'].withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(tarjeta['icono'], color: tarjeta['color']),
-          ),
-          title: Text(tarjeta['nombre']),
-          subtitle: Text(tarjeta['ultimosDigitos']),
-          trailing: _tarjetaSeleccionada == tarjeta['nombre']
-              ? const Icon(Icons.check_circle, color: Colors.green)
-              : null,
-          onTap: () {
-            setState(() {
-              _tarjetaSeleccionada = tarjeta['nombre'];
-            });
-          },
-        ),
-      );
-    }).toList();
   }
 
   void _submitForm() {
@@ -331,13 +493,14 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     if (formKey.currentState!.validate()) {
       formKey.currentState!.save();
 
-      // Validar tarjeta seleccionada si es pago con tarjeta
-      if (!isIngreso && 
-          (_metodoPago == 'Tarjeta Débito' || _metodoPago == 'Tarjeta Crédito') &&
-          _tarjetaSeleccionada == null) {
+      // Validación adicional para pagos con tarjeta
+      if (!isIngreso &&
+          (_metodoPago == 'Tarjeta Débito' ||
+              _metodoPago == 'Tarjeta Crédito') &&
+          (_selectedCard == null || _selectedCardType == null)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Por favor seleccione una tarjeta'),
+            content: Text('Por favor complete los detalles de la tarjeta'),
             backgroundColor: Colors.red,
           ),
         );
@@ -351,11 +514,14 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         'concepto': _concepto,
         'etiqueta': _etiqueta,
         if (!isIngreso) 'metodoPago': _metodoPago,
-        if (!isIngreso && _tarjetaSeleccionada != null) 
-          'tarjeta': _tarjetaSeleccionada,
+        if (!isIngreso && _selectedCard != null) 'tarjeta': _selectedCard,
+        if (!isIngreso && _selectedCardType != null)
+          'tipoTarjeta': _selectedCardType,
+        if (!isIngreso && _creditPaymentOption != null)
+          'opcionPago': _creditPaymentOption,
+        if (!isIngreso && _installments != null) 'cuotas': _installments,
       };
 
-      // Aquí normalmente enviarías los datos a tu base de datos
       print('Movimiento registrado: $movimiento');
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -374,7 +540,10 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
       setState(() {
         _fecha = DateTime.now();
         _metodoPago = 'Efectivo';
-        _tarjetaSeleccionada = null;
+        _selectedCard = null;
+        _selectedCardType = null;
+        _creditPaymentOption = null;
+        _installments = null;
       });
     }
   }
