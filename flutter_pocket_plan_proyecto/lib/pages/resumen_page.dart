@@ -1,4 +1,4 @@
-//Pantalla creada por José Morales
+// Pantalla creada por José Morales
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
@@ -112,7 +112,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const SizedBox(height: 8),
           Text(
-            '\$12,450.00',
+            'Q. 12,450.00',
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -170,7 +170,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 ),
               ),
             ),
-          ), // ← Este cierre faltaba
+          ),
           const SizedBox(width: 10),
           FloatingActionButton(
             onPressed: () {
@@ -240,14 +240,14 @@ class _ResumenTabsState extends State<_ResumenTabs>
             child: _ResumenList(
               items: [
                 _ResumenItem(
-                  icon: Icons.attach_money,
+                  icon: Icons.monetization_on,
                   label: 'Salario',
                   value: '45%',
                   amount: '5,000.00',
                   color: Color(0xFF18BC9C),
                 ),
                 _ResumenItem(
-                  icon: Icons.business,
+                  icon: Icons.work_outline,
                   label: 'Freelance',
                   value: '30%',
                   amount: '3,300.00',
@@ -290,7 +290,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
                   color: Color(0xFFE74C3C),
                 ),
                 _ResumenItem(
-                  icon: Icons.home,
+                  icon: Icons.home_work_outlined,
                   label: 'Renta',
                   value: '25%',
                   amount: '1,100.00',
@@ -359,7 +359,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 }
 
-// -------------------- PARTE 4: Widgets auxiliares (FUERA de _ResumenTabsState) --------------------
+// -------------------- PARTE 4: Widgets auxiliares --------------------
 class _ResumenList extends StatelessWidget {
   final List<_ResumenItem> items;
   const _ResumenList({required this.items});
@@ -408,7 +408,7 @@ class _ResumenItem extends StatelessWidget {
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(value),
         trailing: Text(
-          '\$$amount',
+          'Q$amount',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,

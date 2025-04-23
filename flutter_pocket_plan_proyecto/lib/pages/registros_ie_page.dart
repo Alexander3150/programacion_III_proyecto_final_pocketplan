@@ -1,5 +1,4 @@
-//Pantalla creada por José Morales
-
+// Pantalla creada por José Morales
 import 'package:flutter/material.dart';
 import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/resumen_page.dart';
@@ -13,8 +12,8 @@ class RegistroMovimientoScreen extends StatelessWidget {
       titulo: 'Registrar Movimiento',
       body: const _RegistroMovimientoTabs(),
       mostrarDrawer: true,
-      navIndex: 1, // Ajusta según tu menú lateral
-      mostrarBotonHome: true, // Para volver al resumen
+      navIndex: 1,
+      mostrarBotonHome: true,
     );
   }
 }
@@ -30,7 +29,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 🔑 Claves separadas para cada formulario
   final _formKeyIngreso = GlobalKey<FormState>();
   final _formKeyEgreso = GlobalKey<FormState>();
 
@@ -39,6 +37,7 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   String _concepto = '';
   String _etiqueta = '';
   String _metodoPago = 'Efectivo';
+  String? _tarjetaSeleccionada;
 
   final List<String> _etiquetasIngresos = [
     'Salario', 'Freelance', 'Inversiones', 'Regalo', 'Otros'
@@ -52,6 +51,31 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     'Efectivo', 'Tarjeta Débito', 'Tarjeta Crédito'
   ];
 
+  // Lista simulada de tarjetas registradas
+  final List<Map<String, dynamic>> _tarjetasRegistradas = [
+    {
+      'tipo': 'Tarjeta Crédito',
+      'nombre': 'Visa Platinum',
+      'ultimosDigitos': '•••• 4567',
+      'icono': Icons.credit_card,
+      'color': Colors.blue
+    },
+    {
+      'tipo': 'Tarjeta Débito',
+      'nombre': 'Cuenta Principal',
+      'ultimosDigitos': '•••• 8910',
+      'icono': Icons.account_balance,
+      'color': Colors.green
+    },
+    {
+      'tipo': 'Tarjeta Crédito',
+      'nombre': 'Mastercard Gold',
+      'ultimosDigitos': '•••• 1234',
+      'icono': Icons.credit_card,
+      'color': Colors.orange
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +86,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- TabBar para seleccionar tipo ---
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -86,7 +109,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
           ),
         ),
 
-        // --- Vistas de los formularios ---
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -111,12 +133,10 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
             const SizedBox(height: 20),
             _buildDatePicker(context),
             const SizedBox(height: 20),
-
-            // Monto
             TextFormField(
               decoration: const InputDecoration(
                 labelText: 'Monto',
-                prefixText: '\$ ',
+                prefixText: 'Q ',
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
@@ -128,8 +148,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onSaved: (value) => _monto = double.parse(value!),
             ),
             const SizedBox(height: 20),
-
-            // Concepto
             TextFormField(
               decoration: const InputDecoration(
                 labelText: 'Concepto',
@@ -142,8 +160,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onSaved: (value) => _concepto = value!,
             ),
             const SizedBox(height: 20),
-
-            // Etiqueta
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Etiqueta',
@@ -159,8 +175,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onChanged: (value) => _etiqueta = value!,
             ),
             const SizedBox(height: 30),
-
-            // Botón Guardar
             ElevatedButton(
               onPressed: _submitForm,
               style: ElevatedButton.styleFrom(
@@ -186,12 +200,10 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
             const SizedBox(height: 20),
             _buildDatePicker(context),
             const SizedBox(height: 20),
-
-            // Monto
             TextFormField(
               decoration: const InputDecoration(
                 labelText: 'Monto',
-                prefixText: '\$ ',
+                prefixText: 'Q ',
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
@@ -203,8 +215,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onSaved: (value) => _monto = double.parse(value!),
             ),
             const SizedBox(height: 20),
-
-            // Concepto
             TextFormField(
               decoration: const InputDecoration(
                 labelText: 'Concepto',
@@ -217,8 +227,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onSaved: (value) => _concepto = value!,
             ),
             const SizedBox(height: 20),
-
-            // Etiqueta
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Etiqueta',
@@ -234,8 +242,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               onChanged: (value) => _etiqueta = value!,
             ),
             const SizedBox(height: 20),
-
-            // Método de pago
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Método de Pago',
@@ -245,11 +251,32 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
               items: _metodosPago
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
-              onChanged: (value) => _metodoPago = value!,
+              onChanged: (value) {
+                setState(() {
+                  _metodoPago = value!;
+                  _tarjetaSeleccionada = null;
+                });
+              },
             ),
+            
+            // Mostrar selector de tarjetas solo si se seleccionó tarjeta
+            if (_metodoPago == 'Tarjeta Débito' || _metodoPago == 'Tarjeta Crédito')
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Seleccionar Tarjeta',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._buildListaTarjetas(),
+                  ],
+                ),
+              ),
+            
             const SizedBox(height: 30),
-
-            // Botón Guardar
             ElevatedButton(
               onPressed: _submitForm,
               style: ElevatedButton.styleFrom(
@@ -264,12 +291,58 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     );
   }
 
+  List<Widget> _buildListaTarjetas() {
+    // Filtrar tarjetas según el tipo seleccionado
+    final tarjetasFiltradas = _tarjetasRegistradas.where((tarjeta) {
+      return tarjeta['tipo'] == _metodoPago;
+    }).toList();
+
+    return tarjetasFiltradas.map((tarjeta) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: tarjeta['color'].withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(tarjeta['icono'], color: tarjeta['color']),
+          ),
+          title: Text(tarjeta['nombre']),
+          subtitle: Text(tarjeta['ultimosDigitos']),
+          trailing: _tarjetaSeleccionada == tarjeta['nombre']
+              ? const Icon(Icons.check_circle, color: Colors.green)
+              : null,
+          onTap: () {
+            setState(() {
+              _tarjetaSeleccionada = tarjeta['nombre'];
+            });
+          },
+        ),
+      );
+    }).toList();
+  }
+
   void _submitForm() {
     final isIngreso = _tabController.index == 0;
     final formKey = isIngreso ? _formKeyIngreso : _formKeyEgreso;
 
     if (formKey.currentState!.validate()) {
       formKey.currentState!.save();
+
+      // Validar tarjeta seleccionada si es pago con tarjeta
+      if (!isIngreso && 
+          (_metodoPago == 'Tarjeta Débito' || _metodoPago == 'Tarjeta Crédito') &&
+          _tarjetaSeleccionada == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor seleccione una tarjeta'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       final movimiento = {
         'tipo': isIngreso ? 'ingreso' : 'egreso',
@@ -278,7 +351,12 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         'concepto': _concepto,
         'etiqueta': _etiqueta,
         if (!isIngreso) 'metodoPago': _metodoPago,
+        if (!isIngreso && _tarjetaSeleccionada != null) 
+          'tarjeta': _tarjetaSeleccionada,
       };
+
+      // Aquí normalmente enviarías los datos a tu base de datos
+      print('Movimiento registrado: $movimiento');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -296,11 +374,11 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
       setState(() {
         _fecha = DateTime.now();
         _metodoPago = 'Efectivo';
+        _tarjetaSeleccionada = null;
       });
     }
   }
 
-  // Reutilizable: ícono tipo movimiento
   Widget _buildIconoTipo(IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -312,7 +390,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     );
   }
 
-  // Reutilizable: selector de fecha
   Widget _buildDatePicker(BuildContext context) {
     return InkWell(
       onTap: () async {
