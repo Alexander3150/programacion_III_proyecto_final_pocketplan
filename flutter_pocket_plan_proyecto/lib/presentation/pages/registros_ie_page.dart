@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/resumen_page.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/resumen_page.dart';
 //import 'package:flutter_pocket_plan_proyecto/pages/tarjetas_page.dart';
 
 class RegistroMovimientoScreen extends StatelessWidget {

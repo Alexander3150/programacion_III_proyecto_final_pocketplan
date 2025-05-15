@@ -1,8 +1,8 @@
 // Pantalla creada por José Morales
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/registros_ie_page.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/registros_ie_page.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 class ResumenScreen extends StatelessWidget {
