@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Asegúrate de importar provider
-import '../providers/user_provider.dart';
 
 /// Pantalla de transición con animaciones personalizadas que se muestra:
 /// 1. Después de un inicio de sesión exitoso
@@ -8,10 +6,16 @@ import '../providers/user_provider.dart';
 ///
 /// Parámetros requeridos:
 /// [destination] - Widget al que se navegará después de la animación
+/// [message] - Mensaje principal a mostrar (ej. "¡Bienvenido, Melbyn!")
 class SplashScreen extends StatefulWidget {
   final Widget destination; // Destino despues de la transicion
+  final String message; // Mensaje que se recibe de la pagina login
 
-  const SplashScreen({super.key, required this.destination});
+  const SplashScreen({
+    super.key,
+    required this.destination,
+    required this.message,
+  });
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -20,41 +24,61 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   // Controladores y animaciones:
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  late AnimationController _textController;
-  late Animation<double> _textScaleAnimation;
-  late Animation<double> _inspirationTextAnimation;
+  late AnimationController
+  _controller; // Controlador para animaciones principales
+  late Animation<double>
+  _fadeAnimation; // Animación de aparición gradual (fade)
+  late Animation<Offset>
+  _slideAnimation; // Animación de deslizamiento desde abajo
+  late AnimationController
+  _textController; // Controlador para animaciones de texto
+  late Animation<double> _textScaleAnimation; // Animación de escala para textos
+  late Animation<double>
+  _inspirationTextAnimation; // Animación para mensaje motivacional
 
   @override
   void initState() {
     super.initState();
 
+    // Configuración del controlador principal (dura 2 segundos)
     _controller = AnimationController(
-      vsync: this,
+      vsync: this, // Necesario para sincronizar con los frames de la UI
       duration: const Duration(seconds: 2),
     );
 
+    // Animación de fade (opacidad) con curva suave de entrada/salida
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeInOut,
     );
 
+    // Animación de deslizamiento: comienza 25% abajo y termina en posición normal
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.25),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuad));
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve:
+            Curves.easeOutQuad, // Curva que inicia rápido y termina suavemente
+      ),
+    );
 
+    // Controlador específico para animaciones de texto (dura 800ms)
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
+    // Animación de escala para textos: crece de 50% a 100% con efecto elástico
     _textScaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _textController,
+        curve: Curves.elasticOut, // Efecto de rebote elástico
+      ),
     );
 
+    // Animación específica para el mensaje motivacional: aparece después (50%-100% de la animación)
     _inspirationTextAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _textController,
@@ -62,17 +86,26 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
+    // Iniciar secuencia de animaciones:
+    // 1. Primero las animaciones principales (_controller)
+    // 2. Luego las animaciones de texto (_textController)
     _controller.forward().then((_) {
       _textController.forward();
     });
 
+    // Programar navegación después de 4 segundos (incluye tiempo de animaciones)
     Future.delayed(const Duration(seconds: 4), () {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (_, __, ___) => widget.destination,
+          pageBuilder:
+              (_, __, ___) =>
+                  widget.destination, // Aqui se usa la ruta del destino
           transitionsBuilder: (_, animation, __, child) {
+            // Transición personalizada al cambiar de pantalla:
+            // - Efecto fade (opacidad)
+            // - Deslizamiento suave desde abajo
             return FadeTransition(
               opacity: animation,
               child: SlideTransition(
@@ -93,6 +126,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    // Limpieza: es CRUCIAL disponer los controladores para evitar memory leaks
     _controller.dispose();
     _textController.dispose();
     super.dispose();
@@ -100,17 +134,17 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Obtener nombre del usuario desde el Provider
-    final usuarioProvider = Provider.of<UsuarioProvider>(context);
-    final nombreUsuario = usuarioProvider.usuario?.username ?? 'Usuario';
-
     return Scaffold(
+      // Fondo degradado moderno y elegante
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFF6A11CB), const Color(0xFF2575FC)],
+            colors: [
+              const Color(0xFF6A11CB), // Púrpura oscuro
+              const Color(0xFF2575FC), // Azul brillante
+            ],
             stops: const [0.1, 0.9],
           ),
         ),
@@ -122,7 +156,8 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 40), // Espacio superior
+                  // Contenedor principal de mensajes con animaciones
                   AnimatedBuilder(
                     animation: _textController,
                     builder: (context, child) {
@@ -136,9 +171,9 @@ class _SplashScreenState extends State<SplashScreen>
                     },
                     child: Column(
                       children: [
-                        // Usar el nombre obtenido del provider
+                        // Mensaje principal (recibido como parámetro) con emoji
                         Text(
-                          '✨ ¡Bienvenido, $nombreUsuario! ✨',
+                          '✨ ${widget.message} ✨',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 24,
@@ -147,6 +182,8 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ),
                         const SizedBox(height: 20),
+
+                        // Mensaje motivacional adicional con animación independiente
                         FadeTransition(
                           opacity: _inspirationTextAnimation,
                           child: const Text(
@@ -163,7 +200,10 @@ class _SplashScreenState extends State<SplashScreen>
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 30),
+
+                  // Logo de la aplicación con animación de escala y mejor manejo de errores
                   SizedBox(
                     height: 180,
                     width: 180,
@@ -172,6 +212,7 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Image.asset(
                         'assets/img/pocketplan.png',
                         errorBuilder: (context, error, stackTrace) {
+                          debugPrint("Error cargando imagen: $error");
                           return Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
@@ -199,11 +240,15 @@ class _SplashScreenState extends State<SplashScreen>
                           }
                           return child;
                         },
+
                         filterQuality: FilterQuality.high,
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 30),
+
+                  // Nombre de la aplicación con animación
                   AnimatedBuilder(
                     animation: _textController,
                     builder: (context, child) {
@@ -225,7 +270,10 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
+                  // Eslogan de la aplicación
                   FadeTransition(
                     opacity: _inspirationTextAnimation,
                     child: const Text(

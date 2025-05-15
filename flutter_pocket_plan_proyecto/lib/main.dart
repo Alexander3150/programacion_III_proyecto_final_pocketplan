@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import 'presentation/pages/delete_user_page.dart';
-import 'presentation/pages/login_page.dart';
-import 'presentation/providers/user_provider.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/login_page.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => UsuarioProvider(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -20,20 +11,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      //home: const IniciarSesion(),
       debugShowCheckedModeBanner: false,
 
-      // Ruta inicial al abrir la app
+      //Ruta inicila al abrir la app
       initialRoute: '/login',
 
-      // Mapa de rutas de la app
+      //Mapa de rutas de la app
       routes: {
         '/login': (context) => const IniciarSesion(),
-        '/micuenta': (context) => const MiCuentaPage(),
 
-        // Aquí agregas las demás rutas que se van a utilizar en el layout global
-        // Ejemplo ='/home': (context) => const HomeScreen(),
+        // Aqui agrego las demas rutas que se van a utilizar en el layout global
+        // Ejemplo  ='/home': (context) => const HomeScreen(),
       },
-
       // Por si se navega a una ruta inexistente
       onUnknownRoute:
           (settings) => MaterialPageRoute(

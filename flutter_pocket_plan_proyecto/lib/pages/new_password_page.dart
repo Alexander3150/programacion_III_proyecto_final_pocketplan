@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../data/models/user_model.dart';
-import 'login_page.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/login_page.dart';
 
 /// Paleta de colores Azul claro
 class PasswordColors {
@@ -30,21 +28,9 @@ class PasswordColors {
   ); // Verde suave para mensajes de éxito
   static const Color textField =
       Colors.white; // Fondo blanco para campos de texto
-  static const Color buttonShadow = Color(
-    0x554A8BDF,
-  ); // Color de sombra para botones
 }
 
 class NuevaContrasenaPage extends StatefulWidget {
-  final String email; // Email del usuario que está cambiando la contraseña
-  final String username; // Username del usuario
-
-  const NuevaContrasenaPage({
-    super.key,
-    required this.email,
-    required this.username,
-  });
-
   @override
   _NuevaContrasenaPageState createState() => _NuevaContrasenaPageState();
 }
@@ -52,10 +38,10 @@ class NuevaContrasenaPage extends StatefulWidget {
 /// Estado de la pantalla de nueva contraseña
 ///
 /// Maneja la lógica de:
-/// - Validación de campos en tiempo real
+/// - Validación de campos
 /// - Visibilidad de contraseñas
-/// - Efectos 3D en botones
-/// - Actualización del modelo de usuario
+/// - Feedback visual al usuario
+/// - Navegación después de éxito
 class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
   // Controladores para manejar el texto ingresado en los campos
   final TextEditingController _contrasenaController = TextEditingController();
@@ -78,10 +64,6 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
   Color _contrasenaBorderColor = Colors.grey.shade400;
   Color _confirmarContrasenaBorderColor = Colors.grey.shade400;
 
-  // Variables para efectos 3D en botones
-  bool _isSavePressed = false;
-  bool _isBackPressed = false;
-
   @override
   void initState() {
     super.initState();
@@ -91,8 +73,9 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
       setState(() {
         _contrasenaBorderColor =
             _contrasenaFocusNode.hasFocus
-                ? PasswordColors.primary
-                : Colors.grey.shade400;
+                ? PasswordColors
+                    .primary // Color primario cuando tiene foco
+                : Colors.grey.shade400; // Gris cuando no tiene foco
       });
     });
 
@@ -104,10 +87,6 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                 : Colors.grey.shade400;
       });
     });
-
-    // Validación en tiempo real
-    _contrasenaController.addListener(_validatePassword);
-    _confirmarContrasenaController.addListener(_validatePasswordConfirmation);
   }
 
   @override
@@ -120,31 +99,31 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
     super.dispose();
   }
 
-  /// Valida la contraseña en tiempo real
-  void _validatePassword() {
-    final password = _contrasenaController.text;
+  bool _isValidPassword(String password) {
+    return password.length >= 8;
+  }
+
+  /// Valida todos los campos del formulario
+  ///
+  /// Actualiza los mensajes de error según las validaciones:
+  /// - Contraseña no vacía y con mínimo 8 caracteres
+  /// - Confirmación no vacía y que coincida con la contraseña
+  void _validarCampos() {
     setState(() {
-      if (password.isEmpty) {
+      // Validación para campo de nueva contraseña
+      if (_contrasenaController.text.isEmpty) {
         _errorTextoContrasena = 'Por favor, ingrese la contraseña';
-      } else if (password.length < 8) {
+      } else if (!_isValidPassword(_contrasenaController.text)) {
         _errorTextoContrasena = 'Mínimo 8 caracteres';
-      } else if (password.length > 20) {
-        _errorTextoContrasena = 'Máximo 20 caracteres';
       } else {
         _errorTextoContrasena = null;
       }
-    });
-    _validatePasswordConfirmation();
-  }
 
-  /// Valida la confirmación de contraseña en tiempo real
-  void _validatePasswordConfirmation() {
-    final password = _contrasenaController.text;
-    final confirmation = _confirmarContrasenaController.text;
-    setState(() {
-      if (confirmation.isEmpty) {
+      // Validación para campo de confirmación
+      if (_confirmarContrasenaController.text.isEmpty) {
         _errorTextoConfirmarContrasena = 'Confirme la contraseña';
-      } else if (password != confirmation) {
+      } else if (_contrasenaController.text !=
+          _confirmarContrasenaController.text) {
         _errorTextoConfirmarContrasena = 'Las contraseñas no coinciden';
       } else {
         _errorTextoConfirmarContrasena = null;
@@ -152,29 +131,12 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
     });
   }
 
-  /// Actualiza la contraseña en el modelo de usuario
-  void _updatePasswordInModel() {
-    UserModel.updatePassword(
-      widget.email,
-      widget.username,
-      _contrasenaController.text,
-    );
-  }
-
   void _guardarContrasena() {
-    // Validamos una última vez antes de proceder
-    _validatePassword();
-    _validatePasswordConfirmation();
+    _validarCampos();
 
     // Solo proceder si no hay errores
     if (_errorTextoContrasena == null &&
         _errorTextoConfirmarContrasena == null) {
-      // Actualizamos el modelo
-      print('Intentando actualizar contraseña de:');
-      print('Email: ${widget.email}');
-      print('Username: ${widget.username}');
-      _updatePasswordInModel();
-
       // Mostrar feedback de éxito al usuario
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -202,7 +164,7 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
   Widget build(BuildContext context) {
     // Obtener dimensiones de pantalla para diseño responsivo
     final size = MediaQuery.of(context).size;
-    final isSmallScreen = size.width < 400;
+    final isSmallScreen = size.width < 400; // Flag para pantallas pequeñas
 
     return Scaffold(
       backgroundColor: PasswordColors.background,
@@ -211,14 +173,14 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
           'Nueva contraseña',
           style: TextStyle(
             color: PasswordColors.textLight,
-            fontSize: isSmallScreen ? 22 : 20,
+            fontSize: isSmallScreen ? 22 : 20, // Tamaño responsivo
             fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
+            letterSpacing: 1.5, // Espaciado para mejor legibilidad
           ),
         ),
         centerTitle: true,
         backgroundColor: PasswordColors.primary,
-        elevation: 0,
+        elevation: 0, // Sin sombra para diseño plano moderno
         iconTheme: IconThemeData(color: PasswordColors.textLight),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -231,8 +193,10 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
         ),
       ),
       body: GestureDetector(
+        // Cerrar teclado al tocar fuera de los campos
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: SingleChildScrollView(
+          // Padding responsivo según tamaño de pantalla
           padding: EdgeInsets.symmetric(
             horizontal: isSmallScreen ? 20 : size.width * 0.1,
             vertical: isSmallScreen ? 20 : 30,
@@ -257,12 +221,11 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                 child: Icon(
                   Icons.lock_reset,
                   color: PasswordColors.primary,
-                  size: isSmallScreen ? 70 : 90,
+                  size: isSmallScreen ? 70 : 90, // Tamaño responsivo
                 ),
               ),
 
-              SizedBox(height: isSmallScreen ? 30 : 40),
-
+              SizedBox(height: isSmallScreen ? 30 : 40), // Espaciado responsivo
               // Campo para nueva contraseña
               _buildPasswordField(
                 controller: _contrasenaController,
@@ -277,7 +240,6 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                   });
                 },
                 isSmallScreen: isSmallScreen,
-                maxLength: 20, // Longitud máxima de 20 caracteres
               ),
 
               SizedBox(height: isSmallScreen ? 20 : 30),
@@ -296,27 +258,78 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                   });
                 },
                 isSmallScreen: isSmallScreen,
-                maxLength: 20, // Longitud máxima de 20 caracteres
               ),
 
               SizedBox(height: isSmallScreen ? 40 : 60),
 
-              // Botón principal con efecto 3D mejorado
-              _build3DButton(
-                onPressed: _guardarContrasena,
-                label: 'GUARDAR CONTRASEÑA',
-                icon: Icons.lock_outline,
-                isSmallScreen: isSmallScreen,
-                width: isSmallScreen ? size.width * 0.8 : size.width * 0.6,
-                isPressed: _isSavePressed,
-                onTapDown: () => setState(() => _isSavePressed = true),
-                onTapUp: () => setState(() => _isSavePressed = false),
+              // Botón principal con efecto de elevación y gradiente
+              SizedBox(
+                width:
+                    isSmallScreen
+                        ? size.width * 0.8
+                        : size.width * 0.6, // Ancho responsivo
+                child: Material(
+                  elevation: 6, // Sombra pronunciada
+                  borderRadius: BorderRadius.circular(30),
+                  shadowColor: PasswordColors.primary.withOpacity(0.4),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: LinearGradient(
+                        colors: [
+                          PasswordColors.primary,
+                          PasswordColors.secondary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Colors
+                                .transparent, // Fondo transparente para mostrar el gradiente
+                        shadowColor: Colors.transparent, // Sin sombra propia
+                        padding: EdgeInsets.symmetric(
+                          vertical:
+                              isSmallScreen ? 16 : 18, // Padding responsivo
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: _guardarContrasena,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'GUARDAR CONTRASEÑA',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize:
+                                  isSmallScreen ? 16 : 16, // Tamaño responsivo
+                              fontWeight: FontWeight.bold,
+                              letterSpacing:
+                                  1.1, // Espaciado para mejor legibilidad
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
 
               SizedBox(height: isSmallScreen ? 30 : 40),
 
-              // Botón secundario con efecto 3D
-              _build3DTextButton(
+              // Botón secundario para volver al inicio
+              TextButton(
                 onPressed:
                     () => Navigator.pushReplacement(
                       context,
@@ -324,12 +337,31 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                         builder: (context) => const IniciarSesion(),
                       ),
                     ),
-                label: 'VOLVER AL INICIO',
-                icon: Icons.arrow_back_rounded,
-                isSmallScreen: isSmallScreen,
-                isPressed: _isBackPressed,
-                onTapDown: () => setState(() => _isBackPressed = true),
-                onTapUp: () => setState(() => _isBackPressed = false),
+                style: TextButton.styleFrom(
+                  foregroundColor: PasswordColors.primary,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.arrow_back_rounded,
+                      color: PasswordColors.primary,
+                      size: 24,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'VOLVER AL INICIO',
+                      style: TextStyle(
+                        color: PasswordColors.primary,
+                        fontSize: isSmallScreen ? 14 : 16,
+                        fontWeight: FontWeight.bold,
+                        fontStyle: FontStyle.italic,
+                        decoration: TextDecoration.underline,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -338,7 +370,17 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
     );
   }
 
-  /// Widget personalizado para campos de contraseña con validación en tiempo real
+  /// Widget personalizado para campos de contraseña
+  ///
+  /// Parámetros:
+  /// - controller: Controlador para manejar el texto
+  /// - label: Texto descriptivo del campo
+  /// - errorText: Mensaje de error a mostrar
+  /// - focusNode: Para manejar el enfoque
+  /// - borderColor: Color del borde según estado
+  /// - obscureText: Si el texto debe estar oculto
+  /// - onToggleVisibility: Función para cambiar visibilidad
+  /// - isSmallScreen: Flag para ajustes responsivos
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
@@ -347,12 +389,12 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
     required Color borderColor,
     required bool obscureText,
     required VoidCallback onToggleVisibility,
-    required bool isSmallScreen,
-    int? maxLength,
+    bool isSmallScreen = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label del campo
         Padding(
           padding: const EdgeInsets.only(left: 12.0),
           child: Text(
@@ -366,21 +408,19 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
         ),
         const SizedBox(height: 8),
 
+        // Campo de texto con Material para efecto de elevación
         Material(
-          elevation: 2,
+          elevation: 2, // Sombra sutil
           borderRadius: BorderRadius.circular(12),
           child: TextFormField(
             controller: controller,
             focusNode: focusNode,
             obscureText: obscureText,
-            maxLength: maxLength,
-            inputFormatters: [LengthLimitingTextInputFormatter(maxLength)],
             style: TextStyle(
               color: PasswordColors.textDark,
               fontSize: isSmallScreen ? 16 : 18,
             ),
             decoration: InputDecoration(
-              counterText: '', // Ocultamos el contador de caracteres
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: isSmallScreen ? 16 : 18,
@@ -389,7 +429,7 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
               fillColor: PasswordColors.textField,
               prefixIcon: Icon(
                 Icons.lock_outline,
-                color: borderColor,
+                color: borderColor, // Color cambia según enfoque
                 size: isSmallScreen ? 22 : 24,
               ),
               suffixIcon: IconButton(
@@ -400,14 +440,14 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                 ),
                 onPressed: onToggleVisibility,
               ),
-              errorText: errorText,
+              errorText: errorText, // Mensaje de error interno
               errorStyle: TextStyle(
                 color: PasswordColors.error,
                 fontSize: isSmallScreen ? 14 : 15,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide.none, // Sin borde por defecto
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -415,7 +455,10 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: borderColor, width: 2),
+                borderSide: BorderSide(
+                  color: borderColor,
+                  width: 2,
+                ), // Borde más grueso al enfocar
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -426,140 +469,10 @@ class _NuevaContrasenaPageState extends State<NuevaContrasenaPage> {
                 borderSide: BorderSide(color: PasswordColors.error, width: 2),
               ),
             ),
+            onChanged: (_) => _validarCampos(), // Validar en cada cambio
           ),
         ),
       ],
-    );
-  }
-
-  /// Widget para botón con efecto 3D mejorado
-  Widget _build3DButton({
-    required VoidCallback onPressed,
-    required String label,
-    required IconData icon,
-    required bool isSmallScreen,
-    required double width,
-    required bool isPressed,
-    required VoidCallback onTapDown,
-    required VoidCallback onTapUp,
-  }) {
-    return SizedBox(
-      width: width,
-      child: GestureDetector(
-        onTapDown: (_) => onTapDown(),
-        onTapUp: (_) => onTapUp(),
-        onTapCancel: onTapUp,
-        onTap: onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          transform: Matrix4.identity()..translate(0.0, isPressed ? 4.0 : 0.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            gradient: const LinearGradient(
-              colors: [PasswordColors.primary, PasswordColors.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow:
-                isPressed
-                    ? [
-                      BoxShadow(
-                        color: PasswordColors.buttonShadow,
-                        offset: const Offset(0, 4),
-                        blurRadius: 8,
-                      ),
-                    ]
-                    : [
-                      BoxShadow(
-                        color: PasswordColors.buttonShadow,
-                        offset: const Offset(0, 8),
-                        blurRadius: 12,
-                        spreadRadius: 1,
-                      ),
-                    ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 16 : 18),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white, size: 24),
-                const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 16 : 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Widget para botón de texto con efecto 3D
-  Widget _build3DTextButton({
-    required VoidCallback onPressed,
-    required String label,
-    required IconData icon,
-    required bool isSmallScreen,
-    required bool isPressed,
-    required VoidCallback onTapDown,
-    required VoidCallback onTapUp,
-  }) {
-    return GestureDetector(
-      onTapDown: (_) => onTapDown(),
-      onTapUp: (_) => onTapUp(),
-      onTapCancel: onTapUp,
-      onTap: onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        transform: Matrix4.identity()..translate(0.0, isPressed ? 1.0 : 0.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: PasswordColors.background,
-          boxShadow:
-              isPressed
-                  ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      offset: const Offset(0, 1),
-                      blurRadius: 2,
-                    ),
-                  ]
-                  : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      offset: const Offset(0, 3),
-                      blurRadius: 4,
-                    ),
-                  ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: PasswordColors.primary, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: PasswordColors.primary,
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.bold,
-                fontStyle: FontStyle.italic,
-                decoration: TextDecoration.underline,
-                letterSpacing: 1.1,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
