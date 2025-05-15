@@ -190,6 +190,7 @@ class GlobalLayout extends StatelessWidget {
             icon: Icons.flag,
             text: 'Retos de Ahorro',
             //Ruta para ver el historial de ahorros
+            
           ),
           _buildDrawerItem(
             context,

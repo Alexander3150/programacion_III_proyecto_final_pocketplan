@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/create_user_page.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/recover_password_page.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/resumen_page.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/simulador_de_ahorros_page.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/simulador_de_deudas_page.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/transition_page.dart';
 
 /// Paleta de colores se trato de hacer un diseño moderno y elegante para la aplicación
@@ -90,7 +92,8 @@ class _IniciarSesionState extends State<IniciarSesion> {
           builder:
               (context) => SplashScreen(
                 destination:
-                    ResumenScreen(), // Pantalla de destino después de iniciar sesión
+                    SimuladorDeudasScreen(),
+                    //SimuladorAhorrosScreen(), // Pantalla de destino después de iniciar sesión
                 message:
                     'Bienvenido, ${_userController.text}', // Muestra el nombre del usuario
               ),
