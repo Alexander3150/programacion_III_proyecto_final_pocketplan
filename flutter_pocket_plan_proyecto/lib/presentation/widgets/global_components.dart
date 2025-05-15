@@ -136,7 +136,12 @@ class GlobalLayout extends StatelessWidget {
             icon: Icons.attach_money,
             text: 'Registro de ingresos y egresos',
           ),
-          _buildDrawerItem(context, icon: Icons.credit_card, text: 'Tarjetas'),
+          _buildDrawerItem(
+            context,
+            icon: Icons.credit_card,
+            text: 'Tarjetas',
+            route: '/historial_tarjetas',
+          ),
           _buildDrawerItem(
             context,
             icon: Icons.savings,
