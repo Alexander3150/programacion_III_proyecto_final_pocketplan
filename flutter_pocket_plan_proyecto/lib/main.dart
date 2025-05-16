@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'presentation/pages/delete_user_page.dart';
+import 'presentation/pages/history_cards_screen.dart';
 import 'presentation/pages/login_page.dart';
+import 'presentation/pages/register_credi_cart_screen.dart';
+import 'presentation/pages/register_debit_card_screen.dart';
 import 'presentation/providers/user_provider.dart';
 
 void main() {
@@ -29,7 +32,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const IniciarSesion(),
         '/micuenta': (context) => const MiCuentaPage(),
-
+        '/historial_tarjetas': (context) => HistoryCardsScreen(),
+        '/registrar_tarjeta_credito': (context) => RegisterCreditCardScreen(),
+        '/registrar_tarjeta_debito': (context) => RegisterDebitCardScreen(),
         // Aquí agregas las demás rutas que se van a utilizar en el layout global
         // Ejemplo ='/home': (context) => const HomeScreen(),
       },
