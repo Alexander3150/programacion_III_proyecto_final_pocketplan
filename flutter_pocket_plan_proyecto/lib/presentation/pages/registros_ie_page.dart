@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/history_cards_screen.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/pages/resumen_page.dart';
 //import 'package:flutter_pocket_plan_proyecto/pages/tarjetas_page.dart';
@@ -450,7 +451,7 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ResumenScreen(),
+                            builder: (context) => const HistoryCardsScreen(),
                           ),
                         ).then((_) {
                           setState(() {});
