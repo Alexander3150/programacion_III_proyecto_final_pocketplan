@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
-import '../models/simulador_deuda.dart';
+
+import '../../data/models/simulador_deuda.dart';
+import '../widgets/global_components.dart';
 import 'guardar_simulador_de_deudas_page.dart';
+
 
 // Definición de una clase para manejar los colores utilizados en la app
 class AppColors {

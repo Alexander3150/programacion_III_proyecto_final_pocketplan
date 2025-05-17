@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/editar_simulador_de_ahorros_page.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/login_page.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/datos_ahorro_page.dart'; // Importa la nueva página
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/editar_simulador_de_ahorros_page.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/login_page.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -24,7 +24,8 @@ class MyApp extends StatelessWidget {
         //'/editar_simulador': (context) => const EditarSimuladorDeAhorrosPage(),
         '/login': (context) => const IniciarSesion(),
         '/editar_simulador': (context) => const EditarSimuladorDeAhorrosPage(),
-       //'/datos_ahorro': (context) => const DatosAhorroPage(),  // Nueva ruta añadida
+       //esto agregue
+        
 
       },
 

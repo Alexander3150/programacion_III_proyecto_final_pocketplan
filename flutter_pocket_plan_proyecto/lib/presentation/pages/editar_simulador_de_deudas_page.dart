@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/datos_deuda_page.dart';
-import 'package:flutter_pocket_plan_proyecto/models/simulador_deuda.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/guardar_simulador_de_deudas_page.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/simulador_de_deudas_page.dart';
-import '../models/simulador_deuda.dart';
+import '../widgets/global_components.dart';
+import '../../data/models/simulador_deuda.dart';
+import 'guardar_simulador_de_deudas_page.dart';
 
 class EditarSimuladorDeDeudasPage extends StatefulWidget {
   final SimuladorDeuda simulador;

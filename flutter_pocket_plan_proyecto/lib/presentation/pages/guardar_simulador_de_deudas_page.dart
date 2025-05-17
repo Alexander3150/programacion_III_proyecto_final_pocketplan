@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/simulador_de_deudas_page.dart';
+import '../../data/models/simulador_deuda.dart';
+import '../widgets/global_components.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/datos_deuda_page.dart';
-import 'package:flutter_pocket_plan_proyecto/pages/editar_simulador_de_deudas_page.dart';
-import 'package:flutter_pocket_plan_proyecto/models/simulador_deuda.dart';
+
+import 'datos_deuda_page.dart';
+import 'editar_simulador_de_deudas_page.dart';
+import 'simulador_de_deudas_page.dart';
+
 
 // Definición de colores personalizados
 class AppColors {

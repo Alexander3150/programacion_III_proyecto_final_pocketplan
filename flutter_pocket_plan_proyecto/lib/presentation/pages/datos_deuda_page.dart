@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
+
 import 'package:intl/intl.dart';
-import '../models/simulador_deuda.dart';
+import '../../data/models/simulador_deuda.dart';
+import '../widgets/global_components.dart';
 
 class DatosDeudaPage extends StatefulWidget {
   final SimuladorDeuda simulador;
