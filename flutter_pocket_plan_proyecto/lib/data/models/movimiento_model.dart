@@ -1,16 +1,14 @@
-// En /data/models/movimiento_model.dart
 class Movimiento {
-  final String id;
-  final String tipo; // 'ingreso' o 'egreso'
+  final String tipo;           // 'ingreso' o 'egreso'
   final DateTime fecha;
   final double monto;
   final String concepto;
   final String etiqueta;
-  final String? metodoPago; // Solo para egresos
-  final String? tarjetaId; // ID de la tarjeta usada
-  final String? tipoTarjeta; // 'Débito' o 'Crédito'
-  final String? opcionPago; // 'Al contado' o 'A cuotas'
-  final int? cuotas; // Número de cuotas
+  final String? metodoPago;    // solo para egresos
+  final String? tarjetaId;     // solo para egresos con tarjeta
+  final String? tipoTarjeta;   // 'Débito' o 'Crédito', solo egresos con tarjeta
+  final String? opcionPago;    // 'Al contado' o 'A cuotas', solo crédito
+  final int? cuotas;           // solo si opcionPago == 'A cuotas'
 
   Movimiento({
     required this.tipo,
@@ -23,44 +21,37 @@ class Movimiento {
     this.tipoTarjeta,
     this.opcionPago,
     this.cuotas,
-    String? id,
-  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+  });
 
-  // Conversión a/desde Firebase/Maps
-  factory Movimiento.fromMap(Map<String, dynamic> map) {
-    return Movimiento(
-      id: map['id'],
-      tipo: map['tipo'],
-      fecha: DateTime.parse(map['fecha']),
-      monto: map['monto'].toDouble(),
-      concepto: map['concepto'],
-      etiqueta: map['etiqueta'],
-      metodoPago: map['metodoPago'],
-      tarjetaId: map['tarjetaId'],
-      tipoTarjeta: map['tipoTarjeta'],
-      opcionPago: map['opcionPago'],
-      cuotas: map['cuotas'],
-    );
-  }
-
+  // Para debug/log
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'tipo': tipo,
       'fecha': fecha.toIso8601String(),
       'monto': monto,
       'concepto': concepto,
       'etiqueta': etiqueta,
-      if (metodoPago != null) 'metodoPago': metodoPago,
-      if (tarjetaId != null) 'tarjetaId': tarjetaId,
-      if (tipoTarjeta != null) 'tipoTarjeta': tipoTarjeta,
-      if (opcionPago != null) 'opcionPago': opcionPago,
-      if (cuotas != null) 'cuotas': cuotas,
+      'metodoPago': metodoPago,
+      'tarjetaId': tarjetaId,
+      'tipoTarjeta': tipoTarjeta,
+      'opcionPago': opcionPago,
+      'cuotas': cuotas,
     };
   }
 
-  // Validación básica
-  bool isValid() {
-    return monto > 0 && concepto.isNotEmpty && etiqueta.isNotEmpty;
+  // Si quieres poder crear desde un Map (ejemplo para persistencia local):
+  factory Movimiento.fromMap(Map<String, dynamic> map) {
+    return Movimiento(
+      tipo: map['tipo'] as String,
+      fecha: DateTime.parse(map['fecha'] as String),
+      monto: (map['monto'] as num).toDouble(),
+      concepto: map['concepto'] as String,
+      etiqueta: map['etiqueta'] as String,
+      metodoPago: map['metodoPago'] as String?,
+      tarjetaId: map['tarjetaId'] as String?,
+      tipoTarjeta: map['tipoTarjeta'] as String?,
+      opcionPago: map['opcionPago'] as String?,
+      cuotas: map['cuotas'] as int?,
+    );
   }
 }

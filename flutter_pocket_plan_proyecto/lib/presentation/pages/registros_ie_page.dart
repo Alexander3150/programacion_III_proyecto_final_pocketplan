@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pocket_plan_proyecto/data/models/movimiento_model.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/pages/history_cards_screen.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
-import 'package:flutter_pocket_plan_proyecto/presentation/pages/resumen_page.dart';
 import 'package:flutter_pocket_plan_proyecto/data/models/card_manager.dart';
+import 'package:flutter_pocket_plan_proyecto/data/models/movimiento_repository.dart';
 
 class RegistroMovimientoScreen extends StatelessWidget {
   const RegistroMovimientoScreen({super.key});
@@ -478,22 +478,14 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   }
 
   void _submitForm() async {
-  final isIngreso = _tabController.index == 0;
-  final formKey = isIngreso ? _formKeyIngreso : _formKeyEgreso;
-  final etiqueta = isIngreso ? _etiquetaIngreso : _etiquetaEgreso;
+    final isIngreso = _tabController.index == 0;
+    final formKey = isIngreso ? _formKeyIngreso : _formKeyEgreso;
+    final etiqueta = isIngreso ? _etiquetaIngreso : _etiquetaEgreso;
 
-  if (formKey.currentState!.validate()) {
-    formKey.currentState!.save();
+    if (formKey.currentState!.validate()) {
+      formKey.currentState!.save();
 
-    // Mostrar diálogo de carga
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      // Solo validar para egresos con tarjeta de crédito
+      // --- Validación SOLO para egresos con tarjeta de crédito ---
       if (!isIngreso && _metodoPago == 'Tarjeta Crédito' && _selectedCard != null) {
         final cardManager = CardManager();
         final creditCardList = cardManager.creditCards.where(
@@ -501,7 +493,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         ).toList();
 
         if (creditCardList.isEmpty) {
-          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Tarjeta de crédito no encontrada'),
@@ -512,12 +503,12 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         }
         final creditCard = creditCardList.first;
 
-        // Validar que el monto no supere el límite
+        // Validación contra el límite (valor estático)
         if (_monto > creditCard.limite) {
-          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Límite excedido. Límite de la tarjeta: Q${creditCard.limite}'),
+              content: Text(
+                  'El monto excede el límite de la tarjeta.\nLímite: Q${creditCard.limite.toStringAsFixed(2)}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -525,7 +516,8 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         }
       }
 
-      // Crear el movimiento
+      // (Resto igual...)
+
       final movimiento = Movimiento(
         tipo: isIngreso ? 'ingreso' : 'egreso',
         fecha: _fecha,
@@ -539,42 +531,14 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         cuotas: isIngreso ? null : _installments,
       );
 
-      // Simular guardado (reemplaza con tu lógica real)
-      await Future.delayed(const Duration(seconds: 1));
-      print('Movimiento guardado: ${movimiento.toMap()}');
+      MovimientoRepository().agregarMovimiento(movimiento);
 
-      // Cerrar diálogo y mostrar éxito
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${isIngreso ? 'Ingreso' : 'Egreso'} de Q$_monto registrado exitosamente',
-            style: const TextStyle(fontSize: 16),
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      Navigator.of(context).pop(movimiento);
 
-      // Restablecer formulario
       formKey.currentState!.reset();
       setState(() => _resetForm());
-
-    } catch (e) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error al guardar: ${e.toString()}',
-            style: const TextStyle(fontSize: 16),
-          ),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
     }
   }
-}
 
   void _resetForm() {
     _fecha = DateTime.now();

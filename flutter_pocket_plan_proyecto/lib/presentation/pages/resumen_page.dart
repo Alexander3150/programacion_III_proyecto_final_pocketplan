@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/pages/registros_ie_page.dart';
 import 'package:flutter_pocket_plan_proyecto/data/models/movimiento_model.dart';
+import 'package:flutter_pocket_plan_proyecto/data/models/movimiento_repository.dart';
 
 class ResumenScreen extends StatelessWidget {
   const ResumenScreen({super.key});
@@ -41,44 +42,12 @@ class _ResumenTabsState extends State<_ResumenTabs>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _cargarMovimientosEjemplo(); // Reemplaza esto con tu carga real de datos
+    _cargarMovimientos();
   }
 
-  // Método de ejemplo - reemplaza con tu carga real de movimientos
-  void _cargarMovimientosEjemplo() {
+  void _cargarMovimientos() {
     setState(() {
-      _movimientos = [
-        Movimiento(
-          tipo: 'ingreso',
-          fecha: DateTime.now().subtract(const Duration(days: 2)),
-          monto: 5000,
-          concepto: 'Salario mensual',
-          etiqueta: 'Salario',
-        ),
-        Movimiento(
-          tipo: 'ingreso',
-          fecha: DateTime.now().subtract(const Duration(days: 5)),
-          monto: 1500,
-          concepto: 'Trabajo freelance',
-          etiqueta: 'Freelance',
-        ),
-        Movimiento(
-          tipo: 'egreso',
-          fecha: DateTime.now().subtract(const Duration(days: 1)),
-          monto: 1200,
-          concepto: 'Compras del supermercado',
-          etiqueta: 'Comida',
-          metodoPago: 'Efectivo',
-        ),
-        Movimiento(
-          tipo: 'egreso',
-          fecha: DateTime.now().subtract(const Duration(days: 3)),
-          monto: 800,
-          concepto: 'Pago de renta',
-          etiqueta: 'Renta',
-          metodoPago: 'Transferencia',
-        ),
-      ];
+      _movimientos = MovimientoRepository().movimientos;
     });
   }
 
@@ -134,10 +103,10 @@ class _ResumenTabsState extends State<_ResumenTabs>
   String _mostrarPresupuestoActual() {
     final totalIngresos = _calcularTotal('ingreso', _dateRange);
     final totalEgresos = _calcularTotal('egreso', _dateRange);
+    final presupuesto = MovimientoRepository().presupuesto;
+    final restante = presupuesto + totalIngresos - totalEgresos;
     
-    return _tabController.index == 0
-      ? 'Q. ${totalIngresos.toStringAsFixed(2)}'
-      : 'Q. ${totalEgresos.toStringAsFixed(2)}';
+    return 'Presupuesto restante: Q. ${restante.toStringAsFixed(2)}';
   }
 
   Color _obtenerColorPorEtiqueta(String etiqueta) {
@@ -148,6 +117,10 @@ class _ResumenTabsState extends State<_ResumenTabs>
       'Comida': Color(0xFFE74C3C),
       'Transporte': Color(0xFFF39C12),
       'Renta': Color(0xFF9B59B6),
+      'Regalo': Color(0xFF16A085),
+      'Entretenimiento': Color(0xFF9C27B0),
+      'Servicios': Color(0xFF00BFAE),
+      'Otros': Color(0xFF607D8B),
     };
     return colores[etiqueta] ?? Colors.grey;
   }
@@ -160,6 +133,10 @@ class _ResumenTabsState extends State<_ResumenTabs>
       'Comida': Icons.restaurant,
       'Transporte': Icons.directions_car,
       'Renta': Icons.home_work_outlined,
+      'Regalo': Icons.card_giftcard,
+      'Entretenimiento': Icons.movie,
+      'Servicios': Icons.miscellaneous_services,
+      'Otros': Icons.category,
     };
     return iconos[etiqueta] ?? Icons.category;
   }
@@ -220,6 +197,8 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildBudgetDisplay(BuildContext context) {
+    final presupuesto = MovimientoRepository().presupuesto;
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -236,21 +215,35 @@ class _ResumenTabsState extends State<_ResumenTabs>
       ),
       child: Column(
         children: [
-          Text(
-            _tabController.index == 0 
-              ? 'TOTAL DE INGRESOS' 
-              : 'TOTAL DE EGRESOS',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
+          Row(
+            children: [
+              Text(
+                'Presupuesto: Q. ${presupuesto.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF2C3E50),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.grey),
+                onPressed: () async {
+                  double? nuevoPresupuesto = await _mostrarDialogoPresupuesto(context, presupuesto);
+                  if (nuevoPresupuesto != null) {
+                    setState(() {
+                      MovimientoRepository().presupuesto = nuevoPresupuesto;
+                    });
+                  }
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
             _mostrarPresupuestoActual(),
             style: TextStyle(
-              fontSize: 36,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: _tabController.index == 0 ? _ingresosColor : _egresosColor,
             ),
@@ -265,71 +258,142 @@ class _ResumenTabsState extends State<_ResumenTabs>
     );
   }
 
+  Future<double?> _mostrarDialogoPresupuesto(BuildContext context, double actual) async {
+    final controlador = TextEditingController(text: actual.toString());
+    double? result;
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Editar presupuesto'),
+          content: TextField(
+            controller: controlador,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Presupuesto'),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            TextButton(
+              child: const Text('Guardar'),
+              onPressed: () {
+                final valor = double.tryParse(controlador.text);
+                if (valor != null && valor >= 0) {
+                  result = valor;
+                  Navigator.of(ctx).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+    return result;
+  }
+
   Widget _buildPeriodSelector(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedPeriod,
-                  isExpanded: true,
-                  items:
-                      ['Día', 'Semana', 'Mes', 'Año', 'Personalizado']
-                          .map(
-                            (period) => DropdownMenuItem(
-                              value: period,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(period),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                  onChanged: (value) {
-                    if (value == 'Personalizado') {
-                      _selectDateRange(context);
-                    } else {
-                      setState(() => _selectedPeriod = value!);
-                    }
-                  },
-                ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedPeriod,
+                isExpanded: true,
+                items: [
+                  'Día', 'Semana', 'Mes', 'Año', 'Personalizado'
+                ]
+                    .map(
+                      (period) => DropdownMenuItem(
+                        value: period,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          child: Text(period),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == 'Personalizado') {
+                    _selectDateRange(context);
+                  } else {
+                    setState(() {
+                      _selectedPeriod = value!;
+                      // Restablece fechas al periodo elegido
+                      if (_selectedPeriod == 'Día') {
+                        _dateRange = DateTimeRange(
+                          start: DateTime.now(),
+                          end: DateTime.now(),
+                        );
+                      } else if (_selectedPeriod == 'Semana') {
+                        _dateRange = DateTimeRange(
+                          start: DateTime.now().subtract(const Duration(days: 6)),
+                          end: DateTime.now(),
+                        );
+                      } else if (_selectedPeriod == 'Mes') {
+                        _dateRange = DateTimeRange(
+                          start: DateTime.now().subtract(const Duration(days: 30)),
+                          end: DateTime.now(),
+                        );
+                      } else if (_selectedPeriod == 'Año') {
+                        _dateRange = DateTimeRange(
+                          start: DateTime.now().subtract(const Duration(days: 365)),
+                          end: DateTime.now(),
+                        );
+                      }
+                    });
+                  }
+                },
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          FloatingActionButton(
-            onPressed: () async {
-              final nuevoMovimiento = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RegistroMovimientoScreen(),
-                ),
-              );
-              
-              if (nuevoMovimiento != null && nuevoMovimiento is Movimiento) {
-                setState(() {
-                  _movimientos.add(nuevoMovimiento);
-                });
-              }
+        ),
+        if (_selectedPeriod == 'Personalizado') // <-- SOLO muestra si está en personalizado
+          IconButton(
+            icon: const Icon(Icons.clear, color: Colors.redAccent),
+            tooltip: "Limpiar filtro de fechas",
+            onPressed: () {
+              setState(() {
+                _selectedPeriod = 'Mes';
+                _dateRange = DateTimeRange(
+                  start: DateTime.now().subtract(const Duration(days: 30)),
+                  end: DateTime.now(),
+                );
+              });
             },
-            backgroundColor:
-                _tabController.index == 0 ? _ingresosColor : _egresosColor,
-            mini: true,
-            child: const Icon(Icons.add, color: Colors.white),
           ),
-        ],
-      ),
-    );
-  }
+        const SizedBox(width: 10),
+        FloatingActionButton(
+          onPressed: () async {
+            final nuevoMovimiento = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RegistroMovimientoScreen(),
+              ),
+            );
+            if (nuevoMovimiento != null && nuevoMovimiento is Movimiento) {
+              _cargarMovimientos();
+            }
+          },
+          backgroundColor:
+              _tabController.index == 0 ? _ingresosColor : _egresosColor,
+          mini: true,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildTabBar() {
     return Container(
