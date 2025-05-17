@@ -1,9 +1,8 @@
-// Pantalla creada por José Morales
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/widgets/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/presentation/pages/registros_ie_page.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'package:flutter_pocket_plan_proyecto/data/models/movimiento_model.dart';
 
 class ResumenScreen extends StatelessWidget {
   const ResumenScreen({super.key});
@@ -19,7 +18,6 @@ class ResumenScreen extends StatelessWidget {
   }
 }
 
-// -------------------- PARTE 1: StatefulWidget y Estado Principal --------------------
 class _ResumenTabs extends StatefulWidget {
   const _ResumenTabs();
 
@@ -37,11 +35,51 @@ class _ResumenTabsState extends State<_ResumenTabs>
     start: DateTime.now().subtract(const Duration(days: 30)),
     end: DateTime.now(),
   );
+  List<Movimiento> _movimientos = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _cargarMovimientosEjemplo(); // Reemplaza esto con tu carga real de datos
+  }
+
+  // Método de ejemplo - reemplaza con tu carga real de movimientos
+  void _cargarMovimientosEjemplo() {
+    setState(() {
+      _movimientos = [
+        Movimiento(
+          tipo: 'ingreso',
+          fecha: DateTime.now().subtract(const Duration(days: 2)),
+          monto: 5000,
+          concepto: 'Salario mensual',
+          etiqueta: 'Salario',
+        ),
+        Movimiento(
+          tipo: 'ingreso',
+          fecha: DateTime.now().subtract(const Duration(days: 5)),
+          monto: 1500,
+          concepto: 'Trabajo freelance',
+          etiqueta: 'Freelance',
+        ),
+        Movimiento(
+          tipo: 'egreso',
+          fecha: DateTime.now().subtract(const Duration(days: 1)),
+          monto: 1200,
+          concepto: 'Compras del supermercado',
+          etiqueta: 'Comida',
+          metodoPago: 'Efectivo',
+        ),
+        Movimiento(
+          tipo: 'egreso',
+          fecha: DateTime.now().subtract(const Duration(days: 3)),
+          monto: 800,
+          concepto: 'Pago de renta',
+          etiqueta: 'Renta',
+          metodoPago: 'Transferencia',
+        ),
+      ];
+    });
   }
 
   Future<void> _selectDateRange(BuildContext context) async {
@@ -67,7 +105,103 @@ class _ResumenTabsState extends State<_ResumenTabs>
     }
   }
 
-  // -------------------- PARTE 2: Métodos de construcción principales --------------------
+  // Métodos para filtrar y calcular datos
+  List<Movimiento> _filtrarMovimientos(String tipo, DateTimeRange range) {
+    return _movimientos.where((mov) {
+      return mov.tipo == tipo && 
+             mov.fecha.isAfter(range.start.subtract(const Duration(days: 1))) && 
+             mov.fecha.isBefore(range.end.add(const Duration(days: 1)));
+    }).toList();
+  }
+
+  double _calcularTotal(String tipo, DateTimeRange range) {
+    return _filtrarMovimientos(tipo, range)
+      .fold(0, (sum, mov) => sum + mov.monto);
+  }
+
+  Map<String, double> _obtenerDistribucion(String tipo, DateTimeRange range) {
+    final movs = _filtrarMovimientos(tipo, range);
+    final total = _calcularTotal(tipo, range);
+    
+    if (total == 0) return {};
+    
+    return movs.fold<Map<String, double>>({}, (map, mov) {
+      map[mov.etiqueta] = (map[mov.etiqueta] ?? 0) + (mov.monto / total * 100);
+      return map;
+    });
+  }
+
+  String _mostrarPresupuestoActual() {
+    final totalIngresos = _calcularTotal('ingreso', _dateRange);
+    final totalEgresos = _calcularTotal('egreso', _dateRange);
+    
+    return _tabController.index == 0
+      ? 'Q. ${totalIngresos.toStringAsFixed(2)}'
+      : 'Q. ${totalEgresos.toStringAsFixed(2)}';
+  }
+
+  Color _obtenerColorPorEtiqueta(String etiqueta) {
+    const colores = {
+      'Salario': Color(0xFF18BC9C),
+      'Freelance': Color(0xFF2ECC71),
+      'Inversiones': Color(0xFF3498DB),
+      'Comida': Color(0xFFE74C3C),
+      'Transporte': Color(0xFFF39C12),
+      'Renta': Color(0xFF9B59B6),
+    };
+    return colores[etiqueta] ?? Colors.grey;
+  }
+
+  IconData _obtenerIconoPorEtiqueta(String etiqueta) {
+    const iconos = {
+      'Salario': Icons.monetization_on,
+      'Freelance': Icons.work_outline,
+      'Inversiones': Icons.trending_up,
+      'Comida': Icons.restaurant,
+      'Transporte': Icons.directions_car,
+      'Renta': Icons.home_work_outlined,
+    };
+    return iconos[etiqueta] ?? Icons.category;
+  }
+
+  List<PieChartSectionData> _buildIngresosChartSections() {
+    final distribucion = _obtenerDistribucion('ingreso', _dateRange);
+    
+    return distribucion.entries.map((entry) {
+      final color = _obtenerColorPorEtiqueta(entry.key);
+      return PieChartSectionData(
+        value: entry.value,
+        title: '${entry.value.toStringAsFixed(1)}%',
+        color: color,
+        radius: 60,
+        titleStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
+    }).toList();
+  }
+
+  List<PieChartSectionData> _buildEgresosChartSections() {
+    final distribucion = _obtenerDistribucion('egreso', _dateRange);
+    
+    return distribucion.entries.map((entry) {
+      final color = _obtenerColorPorEtiqueta(entry.key);
+      return PieChartSectionData(
+        value: entry.value,
+        title: '${entry.value.toStringAsFixed(1)}%',
+        color: color,
+        radius: 60,
+        titleStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -102,9 +236,11 @@ class _ResumenTabsState extends State<_ResumenTabs>
       ),
       child: Column(
         children: [
-          const Text(
-            'PRESUPUESTO ACTUAL',
-            style: TextStyle(
+          Text(
+            _tabController.index == 0 
+              ? 'TOTAL DE INGRESOS' 
+              : 'TOTAL DE EGRESOS',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.grey,
@@ -112,7 +248,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const SizedBox(height: 8),
           Text(
-            'Q. 12,450.00',
+            _mostrarPresupuestoActual(),
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -121,9 +257,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const SizedBox(height: 8),
           Text(
-            _tabController.index == 0
-                ? 'Total de ingresos en el periodo'
-                : 'Total de egresos en el periodo',
+            'Periodo: ${_dateRange.start.day}/${_dateRange.start.month} - ${_dateRange.end.day}/${_dateRange.end.month}',
             style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
@@ -173,13 +307,19 @@ class _ResumenTabsState extends State<_ResumenTabs>
           ),
           const SizedBox(width: 10),
           FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final nuevoMovimiento = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const RegistroMovimientoScreen(),
                 ),
               );
+              
+              if (nuevoMovimiento != null && nuevoMovimiento is Movimiento) {
+                setState(() {
+                  _movimientos.add(nuevoMovimiento);
+                });
+              }
             },
             backgroundColor:
                 _tabController.index == 0 ? _ingresosColor : _egresosColor,
@@ -217,12 +357,24 @@ class _ResumenTabsState extends State<_ResumenTabs>
     );
   }
 
-  // -------------------- PARTE 3: Métodos para construir los tabs --------------------
   Widget _buildIngresosTab(BuildContext context) {
+    final items = _obtenerDistribucion('ingreso', _dateRange).entries.map((entry) {
+      final total = _calcularTotal('ingreso', _dateRange);
+      final monto = (total * entry.value / 100).toStringAsFixed(2);
+      
+      return _ResumenItem(
+        icon: _obtenerIconoPorEtiqueta(entry.key),
+        label: entry.key,
+        value: '${entry.value.toStringAsFixed(1)}%',
+        amount: monto,
+        color: _obtenerColorPorEtiqueta(entry.key),
+      );
+    }).toList();
+
     return SingleChildScrollView(
       child: Column(
         children: [
-          SizedBox(
+          if (items.isNotEmpty) SizedBox(
             height: 250,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -234,27 +386,13 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 ),
               ),
             ),
+          ) else const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Text('No hay ingresos registrados en este periodo'),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: _ResumenList(
-              items: [
-                _ResumenItem(
-                  icon: Icons.monetization_on,
-                  label: 'Salario',
-                  value: '45%',
-                  amount: '5,000.00',
-                  color: Color(0xFF18BC9C),
-                ),
-                _ResumenItem(
-                  icon: Icons.work_outline,
-                  label: 'Freelance',
-                  value: '30%',
-                  amount: '3,300.00',
-                  color: Color(0xFF2ECC71),
-                ),
-              ],
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _ResumenList(items: items),
           ),
         ],
       ),
@@ -262,10 +400,23 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildEgresosTab(BuildContext context) {
+    final items = _obtenerDistribucion('egreso', _dateRange).entries.map((entry) {
+      final total = _calcularTotal('egreso', _dateRange);
+      final monto = (total * entry.value / 100).toStringAsFixed(2);
+      
+      return _ResumenItem(
+        icon: _obtenerIconoPorEtiqueta(entry.key),
+        label: entry.key,
+        value: '${entry.value.toStringAsFixed(1)}%',
+        amount: monto,
+        color: _obtenerColorPorEtiqueta(entry.key),
+      );
+    }).toList();
+
     return SingleChildScrollView(
       child: Column(
         children: [
-          SizedBox(
+          if (items.isNotEmpty) SizedBox(
             height: 250,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -277,89 +428,20 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 ),
               ),
             ),
+          ) else const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Text('No hay egresos registrados en este periodo'),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: _ResumenList(
-              items: [
-                _ResumenItem(
-                  icon: Icons.shopping_cart,
-                  label: 'Compras',
-                  value: '35%',
-                  amount: '1,500.00',
-                  color: Color(0xFFE74C3C),
-                ),
-                _ResumenItem(
-                  icon: Icons.home_work_outlined,
-                  label: 'Renta',
-                  value: '25%',
-                  amount: '1,100.00',
-                  color: Color(0xFFF39C12),
-                ),
-              ],
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _ResumenList(items: items),
           ),
         ],
       ),
     );
   }
-
-  List<PieChartSectionData> _buildIngresosChartSections() {
-    return [
-      PieChartSectionData(
-        value: 45,
-        title: '45%',
-        color: const Color(0xFF18BC9C),
-        radius: 60,
-        titleStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      PieChartSectionData(
-        value: 30,
-        title: '30%',
-        color: const Color(0xFF2ECC71),
-        radius: 60,
-        titleStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    ];
-  }
-
-  List<PieChartSectionData> _buildEgresosChartSections() {
-    return [
-      PieChartSectionData(
-        value: 35,
-        title: '35%',
-        color: const Color(0xFFE74C3C),
-        radius: 60,
-        titleStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      PieChartSectionData(
-        value: 25,
-        title: '25%',
-        color: const Color(0xFFF39C12),
-        radius: 60,
-        titleStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    ];
-  }
 }
 
-// -------------------- PARTE 4: Widgets auxiliares --------------------
 class _ResumenList extends StatelessWidget {
   final List<_ResumenItem> items;
   const _ResumenList({required this.items});
