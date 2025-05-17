@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
+import 'package:flutter_pocket_plan_proyecto/pages/simulador_de_deudas_page.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/datos_deuda_page.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/editar_simulador_de_deudas_page.dart';
@@ -27,6 +29,24 @@ class GuardarSimuladorDeDeudasPage extends StatefulWidget {
 }
 
 class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasPage> {
+  @override
+  Widget build(BuildContext context) {
+    return GlobalLayout(
+      titulo: 'Deudas Registradas',
+      body: DeudasRegistradasContent(),
+      mostrarDrawer: true,
+      mostrarBotonHome: true,
+      navIndex: 0,
+    );
+  }
+}
+
+class DeudasRegistradasContent extends StatefulWidget {
+  @override
+  State<DeudasRegistradasContent> createState() => _DeudasRegistradasContentState();
+}
+
+class _DeudasRegistradasContentState extends State<DeudasRegistradasContent> {
   String _formatDate(DateTime date) {
     return DateFormat('dd/MM/yyyy').format(date);
   }
@@ -70,6 +90,8 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
             child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
           ),
         ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
       ),
     );
 
@@ -77,12 +99,18 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
       setState(() {
         simuladoresDeudaGuardados.removeAt(index);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Deuda eliminada.'),
+          content: const Text('Deuda eliminada correctamente'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height / 2,
+            left: 20,
+            right: 20,
+          ),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -94,7 +122,7 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
       context,
       MaterialPageRoute(builder: (context) => DatosDeudaPage(simulador: simulador)),
     );
-    setState(() {}); // Recargar la pantalla por si hubo cambios
+    setState(() {}); 
   }
 
   void _editarSimulador(int index) async {
@@ -108,63 +136,42 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
         ),
       ),
     );
-    setState(() {}); // Recargar la pantalla por si hubo cambios
+    setState(() {}); 
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Deudas Registradas', style: TextStyle(color: AppColors.textLight)),
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        iconTheme: const IconThemeData(color: AppColors.textLight),
-      ),
-      backgroundColor: AppColors.background,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: simuladoresDeudaGuardados.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.money_off, size: 60, color: AppColors.accent.withOpacity(0.5)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No hay deudas registradas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: AppColors.textDark.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Agrega una deuda desde el simulador',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textDark.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : ListView.separated(
-                itemCount: simuladoresDeudaGuardados.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final simulador = simuladoresDeudaGuardados[index];
-                  final progreso = calcularProgreso(simulador);
-                  final color = _getProgressColor(progreso);
-                  final status = _getProgressStatus(progreso);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
 
-                  return Card(
-                    elevation: 2,
-                    margin: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8.0 : 16.0,
+        vertical: 8.0,
+      ),
+      child: simuladoresDeudaGuardados.isEmpty
+          ? _buildEmptyState()
+          : ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: simuladoresDeudaGuardados.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final simulador = simuladoresDeudaGuardados[index];
+                final progreso = calcularProgreso(simulador);
+                final color = _getProgressColor(progreso);
+                final status = _getProgressStatus(progreso);
+
+                return Card(
+                  elevation: 2,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _verDatosSimulador(index),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -174,33 +181,38 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
                               Expanded(
                                 child: Text(
                                   simulador.motivo,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 16 : 18,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textDark,
                                   ),
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              Chip(
-                                label: Text(
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
                                   simulador.periodo,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textLight,
                                   ),
                                 ),
-                                backgroundColor: AppColors.accent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
                           _buildInfoRow('Monto Total:', 'Q${simulador.monto.toStringAsFixed(2)}'),
-                          _buildInfoRow('Monto ya Cancelado:', 'Q${simulador.montoCancelado.toStringAsFixed(2)}'),
+                          _buildInfoRow('Monto Cancelado:', 'Q${simulador.montoCancelado.toStringAsFixed(2)}'),
                           _buildInfoRow('Fecha Inicio:', _formatDate(simulador.fechaInicio)),
                           _buildInfoRow('Fecha Fin:', _formatDate(simulador.fechaFin)),
                           const SizedBox(height: 16),
@@ -215,6 +227,7 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
                                     style: TextStyle(
                                       color: AppColors.textDark,
                                       fontWeight: FontWeight.w500,
+                                      fontSize: isSmallScreen ? 13 : 14,
                                     ),
                                   ),
                                   Text(
@@ -222,17 +235,20 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
                                     style: TextStyle(
                                       color: color,
                                       fontWeight: FontWeight.bold,
+                                      fontSize: isSmallScreen ? 13 : 14,
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              LinearProgressIndicator(
-                                value: progreso,
-                                backgroundColor: Colors.grey.shade200,
-                                valueColor: AlwaysStoppedAnimation<Color>(color),
-                                minHeight: 8,
+                              ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progreso,
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                                  minHeight: 8,
+                                ),
                               ),
                             ],
                           ),
@@ -241,48 +257,111 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.visibility_outlined, size: 22),
-                                color: AppColors.primary,
-                                tooltip: 'Ver detalles',
-                                onPressed: () => _verDatosSimulador(index),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 22),
+                                icon: const Icon(Icons.edit_outlined, size: 20),
                                 color: AppColors.warning,
                                 tooltip: 'Editar',
                                 onPressed: () => _editarSimulador(index),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
+                              const SizedBox(width: 16),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 22),
+                                icon: const Icon(Icons.delete_outline, size: 20),
                                 color: AppColors.error,
                                 tooltip: 'Eliminar',
                                 onPressed: () => _eliminarSimulador(index),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                               ),
                             ],
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.money_off,
+              size: 80,
+              color: AppColors.accent.withOpacity(0.5),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No hay deudas registradas',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark.withOpacity(0.7),
               ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Agrega una deuda desde el simulador para comenzar a gestionar tus pagos',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textDark.withOpacity(0.5),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+              const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SimuladorDeudasScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              elevation: 2,
+            ),
+            child: const Text('Registrar Deuda'),
+          ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: isSmallScreen ? 90 : 110,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w500,
                 color: AppColors.textDark,
+                fontSize: isSmallScreen ? 13 : 14,
               ),
             ),
           ),
@@ -290,7 +369,10 @@ class _GuardarSimuladorDeDeudasPageState extends State<GuardarSimuladorDeDeudasP
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: AppColors.textDark),
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
             ),
           ),
         ],

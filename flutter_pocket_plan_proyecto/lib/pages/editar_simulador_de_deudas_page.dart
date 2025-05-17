@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/datos_deuda_page.dart';
 import 'package:flutter_pocket_plan_proyecto/models/simulador_deuda.dart';
 import 'package:flutter_pocket_plan_proyecto/pages/guardar_simulador_de_deudas_page.dart';
@@ -16,58 +17,105 @@ class EditarSimuladorDeDeudasPage extends StatefulWidget {
   });
 
   @override
-  State<EditarSimuladorDeDeudasPage> createState() =>
-      _EditarSimuladorDeDeudasPageState();
+  State<EditarSimuladorDeDeudasPage> createState() => _EditarSimuladorDeDeudasPageState();
 }
 
-class _EditarSimuladorDeDeudasPageState
-    extends State<EditarSimuladorDeDeudasPage> {
+class _EditarSimuladorDeDeudasPageState extends State<EditarSimuladorDeDeudasPage> {
+  @override
+  Widget build(BuildContext context) {
+    return GlobalLayout(
+      titulo: 'Editar Simulador de Deuda',
+      body: EditarSimuladorDeDeudasContent(
+        simulador: widget.simulador,
+        index: widget.index,
+      ),
+      mostrarDrawer: true,
+      mostrarBotonHome: true,
+      navIndex: 0,
+    );
+  }
+}
+
+class EditarSimuladorDeDeudasContent extends StatefulWidget {
+  final SimuladorDeuda simulador;
+  final int index;
+
+  const EditarSimuladorDeDeudasContent({
+    super.key,
+    required this.simulador,
+    required this.index,
+  });
+
+  @override
+  State<EditarSimuladorDeDeudasContent> createState() => _EditarSimuladorDeDeudasContentState();
+}
+
+class _EditarSimuladorDeDeudasContentState extends State<EditarSimuladorDeDeudasContent> {
   final _formKey = GlobalKey<FormState>();
   final _focusNode = FocusNode();
 
-  late TextEditingController motivoController;
-  late TextEditingController montoController;
-  late TextEditingController montoCanceladoController;
-  late TextEditingController plazoController;
+  late TextEditingController _motivoController;
+  late TextEditingController _montoController;
+  late TextEditingController _montoCanceladoController;
+  late TextEditingController _plazoController;
 
-  String periodo = 'Seleccione una opción';
-  double cuotaCalculada = 0.0;
-  bool mostrarAyuda = false;
+  String _periodo = 'Seleccione una opción';
+  double _cuotaCalculada = 0.0;
+  bool _mostrarAyuda = false;
   bool _isCalculating = false;
+
+  // Variables para controlar valores anteriores
+  String _lastPeriodo = '';
+  String _lastMonto = '';
+  String _lastMontoCancelado = '';
+  String _lastPlazo = '';
 
   @override
   void initState() {
     super.initState();
-    motivoController = TextEditingController(text: widget.simulador.motivo);
-    montoController = TextEditingController(
-        text: widget.simulador.monto.toStringAsFixed(2));
-    montoCanceladoController = TextEditingController(
-        text: widget.simulador.montoCancelado.toStringAsFixed(2));
-    periodo = widget.simulador.periodo;
+    _motivoController = TextEditingController(text: widget.simulador.motivo);
+    _montoController = TextEditingController(
+      text: widget.simulador.monto.toStringAsFixed(2),
+    );
+    _montoCanceladoController = TextEditingController(
+      text: widget.simulador.montoCancelado.toStringAsFixed(2),
+    );
+    _periodo = widget.simulador.periodo;
     final meses = ((widget.simulador.fechaFin.difference(widget.simulador.fechaInicio).inDays) / 30).round();
-    plazoController = TextEditingController(text: meses.toString());
-    cuotaCalculada = _calcularCuota();
+    _plazoController = TextEditingController(text: meses.toString());
+    
+    // Inicializar valores anteriores
+    _lastPeriodo = _periodo;
+    _lastMonto = _montoController.text;
+    _lastMontoCancelado = _montoCanceladoController.text;
+    _lastPlazo = _plazoController.text;
+    
+    _cuotaCalculada = _calcularCuota();
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    _motivoController.dispose();
+    _montoController.dispose();
+    _montoCanceladoController.dispose();
+    _plazoController.dispose();
     super.dispose();
   }
 
   double _calcularCuota() {
     setState(() => _isCalculating = true);
     
-    final monto = double.tryParse(montoController.text) ?? 0;
-    final cancelado = double.tryParse(montoCanceladoController.text) ?? 0;
-    final plazo = int.tryParse(plazoController.text) ?? 1;
+    final monto = double.tryParse(_montoController.text) ?? 0;
+    final cancelado = double.tryParse(_montoCanceladoController.text) ?? 0;
+    final plazo = int.tryParse(_plazoController.text) ?? 1;
     final restante = (monto - cancelado).clamp(0, double.infinity);
 
     double resultado;
     
-    if (periodo == 'Quincenal') {
+    if (_periodo == 'Quincenal') {
       resultado = restante / (plazo * 2);
-    } else if (periodo == 'Mensual') {
+    } else if (_periodo == 'Mensual') {
       resultado = restante / plazo;
     } else {
       resultado = 0.0;
@@ -82,37 +130,55 @@ class _EditarSimuladorDeDeudasPageState
     return resultado;
   }
 
-  void _actualizarCuota() {
+  void _actualizarCuotaSiEsNecesario() {
+    final currentPeriodo = _periodo;
+    final currentMonto = _montoController.text;
+    final currentMontoCancelado = _montoCanceladoController.text;
+    final currentPlazo = _plazoController.text;
+
+    // Solo actualizar si cambió algún campo relevante
+    if (currentPeriodo != _lastPeriodo ||
+        currentMonto != _lastMonto ||
+        currentMontoCancelado != _lastMontoCancelado ||
+        currentPlazo != _lastPlazo) {
+      
+      setState(() {
+        _cuotaCalculada = _calcularCuota();
+        // Actualizar valores anteriores
+        _lastPeriodo = currentPeriodo;
+        _lastMonto = currentMonto;
+        _lastMontoCancelado = currentMontoCancelado;
+        _lastPlazo = currentPlazo;
+      });
+    }
+  }
+
+  void _limpiarCampos() {
     setState(() {
-      cuotaCalculada = _calcularCuota();
+      _motivoController.clear();
+      _montoController.clear();
+      _montoCanceladoController.clear();
+      _plazoController.clear();
+      _periodo = 'Seleccione una opción';
+      _cuotaCalculada = 0.0;
     });
   }
 
   void _guardarCambios() {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      _mostrarAlertaCamposIncompletos();
+      return;
+    }
 
-    final monto = double.tryParse(montoController.text) ?? 0;
-    final cancelado = double.tryParse(montoCanceladoController.text) ?? 0;
-    final plazoMeses = int.tryParse(plazoController.text) ?? 0;
+    final monto = double.tryParse(_montoController.text) ?? 0;
+    final cancelado = double.tryParse(_montoCanceladoController.text) ?? 0;
+    final plazoMeses = int.tryParse(_plazoController.text) ?? 0;
 
-    if (motivoController.text.isEmpty ||
+    if (_motivoController.text.isEmpty ||
         monto <= 0 ||
         plazoMeses <= 0 ||
-        (periodo != 'Mensual' && periodo != 'Quincenal')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Por favor, complete todos los campos correctamente'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: EdgeInsets.only(
-            bottom: MediaQuery.of(context).size.height - 150,
-            left: 20,
-            right: 20,
-          ),
-        ),
-      );
+        (_periodo != 'Mensual' && _periodo != 'Quincenal')) {
+      _mostrarAlertaCamposIncompletos();
       return;
     }
 
@@ -120,19 +186,35 @@ class _EditarSimuladorDeDeudasPageState
     final nuevaFechaFin = DateTime(now.year, now.month + plazoMeses, now.day);
 
     simuladoresDeudaGuardados[widget.index] = SimuladorDeuda(
-      motivo: motivoController.text,
+      motivo: _motivoController.text,
       monto: monto,
       montoCancelado: cancelado,
       fechaInicio: now,
       fechaFin: nuevaFechaFin,
-      periodo: periodo,
+      periodo: _periodo,
     );
 
     Navigator.pop(context, true);
   }
 
+  void _mostrarAlertaCamposIncompletos() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Por favor, complete todos los campos correctamente'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        backgroundColor: Colors.red[400],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return Theme(
       data: Theme.of(context).copyWith(
         inputDecorationTheme: InputDecorationTheme(
@@ -148,194 +230,210 @@ class _EditarSimuladorDeDeudasPageState
           ),
         ),
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Editar Deuda'),
-          centerTitle: true,
-          backgroundColor: const Color(0xFF2E7D32),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.pop(context),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.save_rounded),
-              onPressed: _guardarCambios,
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFE8F5E9),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        _buildLabel('Motivo de la Deuda'),
-                        const SizedBox(height: 8),
-                        _buildTextField(
-                          motivoController,
-                          _actualizarCuota,
-                          hintText: 'Ej: Préstamo personal',
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Por favor ingrese un motivo';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildLabel('Periodo de Pago'),
-                        const SizedBox(height: 8),
-                        _buildDropdown(),
-                        const SizedBox(height: 16),
-                        _buildLabel('Plazo de Pago'),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTextField(
-                                plazoController,
-                                _actualizarCuota,
-                                keyboardType: TextInputType.number,
-                                hintText: 'Ej: 12',
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Ingrese el plazo';
-                                  }
-                                  if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                                    return 'Plazo inválido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Meses',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                  child: Column(
+                    children: [
+                      _buildLabel('Motivo de la Deuda'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        _motivoController,
+                        (_) {}, // No actualiza el cálculo
+                        hintText: 'Ej: Préstamo personal',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor ingrese un motivo';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLabel('Periodo de Pago'),
+                      const SizedBox(height: 8),
+                      _buildDropdown(),
+                      const SizedBox(height: 16),
+                      _buildLabel('Plazo de Pago'),
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: _buildTextField(
+                                  _plazoController,
+                                  (_) => _actualizarCuotaSiEsNecesario(),
+                                  keyboardType: TextInputType.number,
+                                  hintText: 'Ej: 12',
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Ingrese el plazo';
+                                    }
+                                    if (int.tryParse(value) == null || int.parse(value) <= 0) {
+                                      return 'Plazo inválido';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.help_outline,
-                                color: Colors.grey.shade600),
-                              onPressed: () {
-                                setState(() => mostrarAyuda = true);
-                                Future.delayed(
-                                  const Duration(seconds: 3),
-                                  () => setState(() => mostrarAyuda = false),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        if (mostrarAyuda)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Cantidad de meses en que desea pagar la deuda',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 12),
+                              SizedBox(width: isSmallScreen ? 4 : 8),
+                              Container(
+                                constraints: BoxConstraints(
+                                  minWidth: isSmallScreen ? 70 : 80,
+                                ),
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Meses',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.help_outline,
+                                  color: Theme.of(context).primaryColor,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  if (!mounted) return;
+                                  setState(() => _mostrarAyuda = true);
+                                  Future.delayed(
+                                    const Duration(seconds: 3),
+                                    () {
+                                      if (!mounted) return;
+                                      setState(() => _mostrarAyuda = false);
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      if (_mostrarAyuda)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Cantidad de meses en que desea pagar la deuda',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        _buildLabel('Monto Total de la Deuda'),
-                        const SizedBox(height: 8),
-                        _buildTextField(
-                          montoController,
-                          _actualizarCuota,
-                          keyboardType: TextInputType.number,
-                          prefixText: 'Q ',
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingrese el monto';
-                            }
-                            if (double.tryParse(value) == null || double.parse(value) <= 0) {
-                              return 'Monto inválido';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildLabel('Monto Ya Cancelado'),
-                        const SizedBox(height: 8),
-                        _buildTextField(
-                          montoCanceladoController,
-                          _actualizarCuota,
-                          keyboardType: TextInputType.number,
-                          prefixText: 'Q ',
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingrese el monto';
-                            }
-                            if (double.tryParse(value) == null || double.parse(value) < 0) {
-                              return 'Monto inválido';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 87, 156, 91),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.shade800.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                  child: Column(
+                    children: [
+                      _buildLabel('Monto Total de la Deuda'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        _montoController,
+                        (_) => _actualizarCuotaSiEsNecesario(),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        prefixText: 'Q ',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingrese el monto';
+                          }
+                          if (double.tryParse(value) == null || double.parse(value) <= 0) {
+                            return 'Monto inválido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLabel('Monto Ya Cancelado'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        _montoCanceladoController,
+                        (_) => _actualizarCuotaSiEsNecesario(),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        prefixText: 'Q ',
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingrese el monto';
+                          }
+                          if (double.tryParse(value) == null) {
+                            return 'Monto inválido';
+                          }
+                          if (double.parse(value) < 0) {
+                            return 'No puede ser negativo';
+                          }
+                          final montoTotal = double.tryParse(_montoController.text) ?? 0;
+                          if (double.parse(value) > montoTotal) {
+                            return 'No puede ser mayor al total';
+                          }
+                          return null;
+                        },
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColorDark,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.shade800.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'CUOTA ${periodo == 'Quincenal' ? 'QUINCENAL' : 'MENSUAL'}',
+                            'CUOTA ${_periodo == 'Quincenal' ? 'QUINCENAL' : 'MENSUAL'}',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
@@ -344,7 +442,7 @@ class _EditarSimuladorDeDeudasPageState
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            periodo == 'Seleccione una opción'
+                            _periodo == 'Seleccione una opción'
                                 ? 'Seleccione periodo'
                                 : 'Valor estimado',
                             style: const TextStyle(
@@ -354,59 +452,75 @@ class _EditarSimuladorDeDeudasPageState
                           ),
                         ],
                       ),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _isCalculating
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
-                                ),
-                              )
-                            : Text(
-                                'Q${cuotaCalculada.toStringAsFixed(2)}',
-                                key: ValueKey<double>(cuotaCalculada),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _isCalculating
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white),
                               ),
-                      ),
-                    ],
-                  ),
+                            )
+                          : Text(
+                              'Q${_cuotaCalculada.toStringAsFixed(2)}',
+                              key: ValueKey<double>(_cuotaCalculada),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _guardarCambios,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 87, 156, 91), 
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _guardarCambios,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
+                      child: const Text(
+                        'GUARDAR CAMBIOS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      'GUARDAR CAMBIOS',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  const SizedBox(width: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.cleaning_services),
+                      color: Colors.grey.shade700,
+                      onPressed: _limpiarCampos,
+                      tooltip: 'Limpiar todos los campos',
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -416,16 +530,17 @@ class _EditarSimuladorDeDeudasPageState
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1B5E20),
+        color: Theme.of(context).primaryColorDark,
+        fontSize: 14,
       ),
     );
   }
 
   Widget _buildTextField(
     TextEditingController controller,
-    VoidCallback onChangedCallback, {
+    ValueChanged<String> onChanged, {
     TextInputType keyboardType = TextInputType.text,
     String? hintText,
     String? prefixText,
@@ -434,21 +549,20 @@ class _EditarSimuladorDeDeudasPageState
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      onChanged: (_) => onChangedCallback(),
+      onChanged: onChanged,
       validator: validator,
-      enableInteractiveSelection: false,
-      toolbarOptions: const ToolbarOptions(
-        copy: false,
-        paste: false,
-        cut: false,
-        selectAll: false,
-      ),
       decoration: InputDecoration(
         hintText: hintText,
         prefixText: prefixText,
-        prefixStyle: const TextStyle(
-          color: Colors.black,
+        prefixStyle: TextStyle(
+          color: Colors.grey.shade700,
           fontWeight: FontWeight.bold,
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
       style: const TextStyle(
@@ -460,7 +574,7 @@ class _EditarSimuladorDeDeudasPageState
 
   Widget _buildDropdown() {
     return DropdownButtonFormField<String>(
-      value: periodo,
+      value: _periodo,
       items: const [
         DropdownMenuItem(
           value: 'Seleccione una opción',
@@ -477,8 +591,8 @@ class _EditarSimuladorDeDeudasPageState
       ],
       onChanged: (value) {
         setState(() {
-          periodo = value!;
-          _actualizarCuota();
+          _periodo = value!;
+          _actualizarCuotaSiEsNecesario();
         });
       },
       validator: (value) {
@@ -487,19 +601,28 @@ class _EditarSimuladorDeDeudasPageState
         }
         return null;
       },
-      decoration: const InputDecoration(
-        contentPadding: EdgeInsets.symmetric(
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 0,
+          vertical: 14,
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
       style: const TextStyle(
         color: Colors.black87,
         fontSize: 16,
       ),
-      dropdownColor: const Color.fromARGB(255, 26, 30, 224),
+      dropdownColor: Colors.white,
       borderRadius: BorderRadius.circular(12),
-      icon: const Icon(Icons.arrow_drop_down_rounded),
+      icon: Icon(
+        Icons.arrow_drop_down_rounded,
+        color: Theme.of(context).primaryColor,
+      ),
       isExpanded: true,
     );
   }

@@ -37,7 +37,6 @@ class DatosDeudaContent extends StatefulWidget {
 class _DatosDeudaContentState extends State<DatosDeudaContent> with TickerProviderStateMixin {
   final TextEditingController _montoController = TextEditingController();
   DateTime _fechaCuota = DateTime.now();
-  String _metodoPago = 'Efectivo';
   List<Map<String, dynamic>> cuotasRegistradas = [];
   double progresoAcumulado = 0.0;
   bool camposBloqueados = false;
@@ -122,7 +121,6 @@ class _DatosDeudaContentState extends State<DatosDeudaContent> with TickerProvid
     final cuota = {
       'monto': montoPagado,
       'fecha': _fechaCuota,
-      'metodo': _metodoPago,
     };
 
     setState(() {
@@ -141,7 +139,6 @@ class _DatosDeudaContentState extends State<DatosDeudaContent> with TickerProvid
     final cuota = cuotasRegistradas[index];
     _montoController.text = cuota['monto'].toString();
     _fechaCuota = cuota['fecha'];
-    _metodoPago = cuota['metodo'];
     cuotasRegistradas.removeAt(index);
     setState(() {
       progresoAcumulado = calcularProgreso(widget.simulador);
@@ -264,81 +261,60 @@ class _DatosDeudaContentState extends State<DatosDeudaContent> with TickerProvid
                       ),
                       const SizedBox(height: 12),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _metodoPago,
-                              decoration: InputDecoration(
-                                labelText: 'Método de Pago',
-                                labelStyle: TextStyle(color: Colors.grey.shade700),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                filled: true,
-                                fillColor: camposBloqueados ? Colors.grey.shade200 : Colors.white,
-                              ),
-                              items: ['Efectivo', 'Tarjeta']
-                                  .map((value) => DropdownMenuItem(
-                                        value: value,
-                                        child: Text(
-                                          value,
-                                          style: TextStyle(
-                                            color: camposBloqueados ? Colors.grey.shade600 : Colors.black,
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                              onChanged: camposBloqueados
-                                  ? null
-                                  : (value) => setState(() => _metodoPago = value!),
-                              style: TextStyle(
-                                color: camposBloqueados ? Colors.grey.shade600 : Colors.black,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: camposBloqueados ? Colors.grey.shade300 : const Color(0xFF2E7D32),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.calendar_today, color: Colors.white),
-                              onPressed: camposBloqueados
-                                  ? null
-                                  : () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: _fechaCuota,
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                        builder: (context, child) {
-                                          return Theme(
-                                            data: Theme.of(context).copyWith(
-                                              colorScheme: const ColorScheme.light(
-                                                primary: Color(0xFF2E7D32),
-                                                onPrimary: Colors.white,
-                                                onSurface: Colors.black,
-                                              ),
-                                            ),
-                                            child: child!,
-                                          );
-                                        },
-                                      );
-                                      if (picked != null) {
-                                        setState(() => _fechaCuota = picked);
-                                      }
-                                    },
-                            ),
-                          ),
-                        ],
+                    Container(
+  padding: const EdgeInsets.symmetric(horizontal: 12),
+  decoration: BoxDecoration(
+    border: Border.all(color: Colors.grey.shade400),
+    borderRadius: BorderRadius.circular(8),
+    color: Colors.white,
+  ),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        'Fecha de la Cuota: ${_formatDate(_fechaCuota)}',
+        style: TextStyle(
+          color: camposBloqueados ? Colors.grey.shade600 : Colors.black87,
+          fontSize: 16,
+        ),
+      ),
+      IconButton(
+        icon: Icon(
+          Icons.calendar_today,
+          color: camposBloqueados ? Colors.grey : const Color(0xFF2E7D32),
+        ),
+        onPressed: camposBloqueados
+            ? null
+            : () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaCuota,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2101),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.light(
+                          primary: Color(0xFF2E7D32),
+                          onPrimary: Colors.white,
+                          surface: Colors.white,
+                          onSurface: Colors.black,
+                        ),
+                        dialogBackgroundColor: Colors.white,
                       ),
+                      child: child!,
+                    );
+                  },
+                );
+                if (picked != null) {
+                  setState(() => _fechaCuota = picked);
+                }
+              },
+      ),
+    ],
+  ),
+),
+                      
                     ],
                   ),
                 ),
@@ -508,7 +484,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent> with TickerProvid
                                 ),
                               ),
                               subtitle: Text(
-                                '${_formatDate(cuota['fecha'])} - ${cuota['metodo']}',
+                                _formatDate(cuota['fecha']),
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                 ),

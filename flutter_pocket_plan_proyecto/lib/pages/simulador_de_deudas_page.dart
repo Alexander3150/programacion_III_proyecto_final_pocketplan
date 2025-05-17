@@ -417,4 +417,3 @@ class _SimuladorDeudasWidgetState extends State<SimuladorDeudasWidget> {
   }
 }
 
-//List<SimuladorDeuda> simuladoresDeudaGuardados = [];
