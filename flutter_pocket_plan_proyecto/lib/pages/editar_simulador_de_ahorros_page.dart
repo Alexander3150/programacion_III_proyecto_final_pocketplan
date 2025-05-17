@@ -5,7 +5,7 @@ import 'package:flutter_pocket_plan_proyecto/layout/global_components.dart';
 import 'package:flutter_pocket_plan_proyecto/models/simulador_ahorro.dart';
 import 'guardar_simulador_de_ahorros_page.dart';
 
-// Colores personalizados para la pantalla de edición
+// Colores personalizados 
 class EditColors {
   static const Color primary = Color(0xFF1976D2);
   static const Color secondary = Color(0xFF42A5F5);
