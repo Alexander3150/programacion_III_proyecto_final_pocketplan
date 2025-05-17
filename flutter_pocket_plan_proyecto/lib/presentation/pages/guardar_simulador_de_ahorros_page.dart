@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../../data/models/simulador_ahorro.dart';
 import '../widgets/global_components.dart';
 import 'datos_ahorro_page.dart';
@@ -84,7 +83,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
     if (confirm) {
       setState(() {
         final eliminado = simuladoresGuardados.removeAt(index);
-        
+
         // Mostrar snackbar con opción de deshacer
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -111,37 +110,36 @@ class _GuardarSimuladorDeAhorrosWidgetState
     }
   }
 
-        Future<bool> _mostrarConfirmacionEliminar() async {
-  return await showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Eliminar simulador', 
-          style: TextStyle(color: AppColors.textDark)),
-      content: const Text('¿Estás seguro de que deseas eliminar este simulador?'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16)),
-      backgroundColor: Colors.white,
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar',
+  Future<bool> _mostrarConfirmacionEliminar() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar simulador',
             style: TextStyle(color: AppColors.textDark)),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.error,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+        content: const Text('¿Estás seguro de que deseas eliminar este simulador?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.textDark)),
           ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Eliminar',
-            style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  ) ?? false;
-}
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
 
   void _editarSimulador(int index) async {
     final actualizado = await Navigator.pushNamed(
@@ -161,8 +159,8 @@ class _GuardarSimuladorDeAhorrosWidgetState
     await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => 
-          DatosAhorroPage(simulador: simulador),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            DatosAhorroPage(simulador: simulador),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
@@ -184,8 +182,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
         content: Text(mensaje),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
       ),
@@ -194,13 +191,22 @@ class _GuardarSimuladorDeAhorrosWidgetState
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: simuladoresGuardados.isEmpty
-            ? _buildEmptyState()
-            : _buildListaSimuladores(),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5FBF5), Color(0xFFE8F5E9)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: simuladoresGuardados.isEmpty
+              ? _buildEmptyState()
+              : _buildListaSimuladores(),
+        ),
       ),
     );
   }
@@ -209,123 +215,103 @@ class _GuardarSimuladorDeAhorrosWidgetState
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
       itemCount: simuladoresGuardados.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      separatorBuilder: (context, index) => const SizedBox(height: 20),
       itemBuilder: (context, index) {
         final simulador = simuladoresGuardados[index];
-        final progreso = calcularProgreso(simulador);
+        final progreso = calcularProgreso(simulador).clamp(0.0, 1.0);
         final progressColor = _getProgressColor(progreso);
         final status = _getProgressStatus(progreso);
 
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 350),
           curve: Curves.easeInOut,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             onTap: () => _verDatosSimulador(index),
             onLongPress: () => _editarSimulador(index),
-            child: Card(
-              elevation: 2,
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 12,
+                    offset: const Offset(2, 4),
+                  ),
+                ],
               ),
-              shadowColor: AppColors.shadow,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(18.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header con ícono y objetivo
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Flexible(
+                        Icon(Icons.savings, size: 32, color: AppColors.primaryLight),
+                        const SizedBox(width: 12),
+                        Expanded(
                           child: Text(
                             simulador.objetivo,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 19,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
+                              letterSpacing: 0.1,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            simulador.periodo,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ),
+                        _buildPeriodoChip(simulador.periodo),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow('Monto a ahorrar:', 'Q${simulador.monto.toStringAsFixed(2)}'),
-                    _buildInfoRow('Monto inicial:', 'Q${simulador.montoInicial.toStringAsFixed(2)}'),
-                    _buildInfoRow('Fecha inicio:', _formatDate(simulador.fechaInicio)),
-                    _buildInfoRow('Fecha fin:', _formatDate(simulador.fechaFin)),
-                    const SizedBox(height: 16),
+                    // Info Rows
+                    _buildInfoRow(Icons.flag_outlined, 'Monto a ahorrar:', 'Q${simulador.monto.toStringAsFixed(2)}'),
+                    _buildInfoRow(Icons.attach_money_outlined, 'Monto inicial:', 'Q${simulador.montoInicial.toStringAsFixed(2)}'),
+                    _buildInfoRow(Icons.date_range_outlined, 'Fecha inicio:', _formatDate(simulador.fechaInicio)),
+                    _buildInfoRow(Icons.event_outlined, 'Fecha fin:', _formatDate(simulador.fechaFin)),
+                    const SizedBox(height: 18),
+                    // Progreso animado y status
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Progreso: ${(progreso * 100).toStringAsFixed(2)}%',
+                              'Progreso: ${(progreso * 100).toStringAsFixed(1)}%',
                               style: const TextStyle(
                                 color: AppColors.textDark,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: progressColor.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status,
-                                style: TextStyle(
-                                  color: progressColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
+                            const SizedBox(width: 8),
+                            _buildStatusBadge(status, progressColor),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: progreso,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                            minHeight: 10,
-                          ),
+                        const SizedBox(height: 10),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: progreso),
+                          duration: const Duration(milliseconds: 600),
+                          builder: (context, value, _) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: value,
+                                backgroundColor: Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                                minHeight: 12,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                    // Botones de acción
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -354,6 +340,54 @@ class _GuardarSimuladorDeAhorrosWidgetState
     );
   }
 
+  Widget _buildPeriodoChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      margin: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [AppColors.primaryLight, AppColors.primary],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(1, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      margin: const EdgeInsets.only(left: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.33)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 12.5,
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButton({
     required IconData icon,
     required Color color,
@@ -363,17 +397,25 @@ class _GuardarSimuladorDeAhorrosWidgetState
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.all(6),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withOpacity(0.11),
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.16),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Icon(
             icon,
-            size: 20,
+            size: 22,
             color: color,
           ),
         ),
@@ -388,75 +430,75 @@ class _GuardarSimuladorDeAhorrosWidgetState
         children: [
           Icon(
             Icons.savings_outlined,
-            size: 80,
-            color: AppColors.primaryLight.withOpacity(0.3),
+            size: 92,
+            color: AppColors.primaryLight.withOpacity(0.26),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
             'No hay simuladores guardados',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 21,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark.withOpacity(0.7),
+              color: AppColors.textDark.withOpacity(0.77),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 42),
             child: Text(
-              'Crea un simulador de ahorro para comenzar a gestionar tus metas financieras',
+              'Crea un simulador de ahorro para comenzar a gestionar tus metas financieras.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textDark.withOpacity(0.6),
-                fontSize: 14,
+                color: AppColors.textDark.withOpacity(0.59),
+                fontSize: 15,
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          ElevatedButton(
+          const SizedBox(height: 28),
+          ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SimuladorAhorrosScreen(),
-                        ),
-                      );
-
-              // Navegar a la página de creación de simulador
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SimuladorAhorrosScreen(),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(13),
               ),
               padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
+                horizontal: 28,
+                vertical: 14,
               ),
-              elevation: 2,
+              elevation: 3,
             ),
-            child: const Text('Crear simulador'),
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text('Crear simulador'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, size: 18, color: AppColors.primary.withOpacity(0.75)),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 110,
+            width: 112,
             child: Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: AppColors.textDark.withOpacity(0.7),
-                fontSize: 13,
+                color: AppColors.textDark.withOpacity(0.74),
+                fontSize: 13.3,
               ),
             ),
           ),
@@ -466,7 +508,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
               value,
               style: const TextStyle(
                 color: AppColors.textDark,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
