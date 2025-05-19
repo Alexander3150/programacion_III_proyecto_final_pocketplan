@@ -270,8 +270,8 @@ class _GuardarSimuladorDeAhorrosWidgetState
                     ),
                     const SizedBox(height: 16),
                     // Info Rows
-                    _buildInfoRow(Icons.flag_outlined, 'Monto a ahorrar:', 'Q${simulador.monto.toStringAsFixed(2)}'),
-                    _buildInfoRow(Icons.attach_money_outlined, 'Monto inicial:', 'Q${simulador.montoInicial.toStringAsFixed(2)}'),
+                    _buildInfoRow(Icons.savings_outlined, 'Monto a ahorrar:', 'Q${simulador.monto.toStringAsFixed(2)}'),
+                    _buildInfoRow(Icons.flag_outlined, 'Monto inicial:', 'Q${simulador.montoInicial.toStringAsFixed(2)}'),
                     _buildInfoRow(Icons.date_range_outlined, 'Fecha inicio:', _formatDate(simulador.fechaInicio)),
                     _buildInfoRow(Icons.event_outlined, 'Fecha fin:', _formatDate(simulador.fechaFin)),
                     const SizedBox(height: 18),

@@ -499,26 +499,7 @@ class _DatosAhorroContentState extends State<_DatosAhorroContent> {
                                   ),
                                 ),
                               ),
-                              OutlinedButton.icon(
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: AppColors.primary,
-                                ),
-                                label: const Text(
-                                  'Regresar',
-                                  style: TextStyle(color: AppColors.primary),
-                                ),
-                                onPressed: () => Navigator.pop(context),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
+                            
                             ],
                           ),
                         ),
