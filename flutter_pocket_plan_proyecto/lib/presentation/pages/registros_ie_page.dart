@@ -24,8 +24,7 @@ class _RegistroMovimientoTabs extends StatefulWidget {
   const _RegistroMovimientoTabs();
 
   @override
-  State<_RegistroMovimientoTabs> createState() =>
-      _RegistroMovimientoTabsState();
+  State<_RegistroMovimientoTabs> createState() => _RegistroMovimientoTabsState();
 }
 
 class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
@@ -225,6 +224,23 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   }
 
   Widget _buildFormularioEgreso(BuildContext context) {
+    final isCredit = _metodoPago == 'Tarjeta Crédito';
+    final selectedCreditCard = isCredit && _selectedCard != null
+        ? CardManager().creditCards.firstWhere(
+            (card) => card.id == _selectedCard,
+            orElse: () => null as CreditCard,
+          )
+        : null;
+
+    double saldoDisponible = 0;
+    if (selectedCreditCard != null) {
+      final sumaEgresos = MovimientoRepository().movimientos
+          .where((mov) =>
+              mov.tipo == 'egreso' && mov.tarjetaId == selectedCreditCard.id)
+          .fold<double>(0, (prev, mov) => prev + mov.monto);
+      saldoDisponible = selectedCreditCard.limite - sumaEgresos;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -386,6 +402,38 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                         ),
                       ],
                     ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HistoryCardsScreen(),
+                          ),
+                        ).then((_) => setState(() {}));
+                      },
+                      child: const Text(
+                        '¿No ves tu tarjeta? Agrega una nueva en la sección Tarjetas',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    if (_selectedCardType == 'Crédito' &&
+                        _selectedCard != null &&
+                        selectedCreditCard != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Saldo disponible: Q${saldoDisponible.toStringAsFixed(2)} / Límite: Q${selectedCreditCard.limite.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: saldoDisponible > 0
+                                ? Colors.green
+                                : Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     if (_selectedCardType == 'Crédito' && _selectedCard != null)
                       Column(
                         children: [
@@ -438,24 +486,6 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
                             ),
                         ],
                       ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HistoryCardsScreen(),
-                          ),
-                        ).then((_) => setState(() {}));
-                      },
-                      child: const Text(
-                        '¿No ves tu tarjeta? Agrega una nueva en la sección Tarjetas',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -485,7 +515,7 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
     if (formKey.currentState!.validate()) {
       formKey.currentState!.save();
 
-      // --- Validación SOLO para egresos con tarjeta de crédito ---
+      // Validación dinámica de saldo disponible en tarjeta de crédito
       if (!isIngreso && _metodoPago == 'Tarjeta Crédito' && _selectedCard != null) {
         final cardManager = CardManager();
         final creditCardList = cardManager.creditCards.where(
@@ -503,20 +533,24 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         }
         final creditCard = creditCardList.first;
 
-        // Validación contra el límite (valor estático)
-        if (_monto > creditCard.limite) {
+        // Calcular saldo disponible restando los egresos existentes
+        final sumaEgresos = MovimientoRepository().movimientos
+            .where((mov) => mov.tipo == 'egreso' && mov.tarjetaId == _selectedCard)
+            .fold<double>(0, (prev, mov) => prev + mov.monto);
+
+        final saldoDisponible = creditCard.limite - sumaEgresos;
+
+        if (_monto > saldoDisponible) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'El monto excede el límite de la tarjeta.\nLímite: Q${creditCard.limite.toStringAsFixed(2)}'),
+                  'Saldo insuficiente. Saldo disponible en la tarjeta: Q${saldoDisponible.toStringAsFixed(2)}'),
               backgroundColor: Colors.red,
             ),
           );
           return;
         }
       }
-
-      // (Resto igual...)
 
       final movimiento = Movimiento(
         tipo: isIngreso ? 'ingreso' : 'egreso',
