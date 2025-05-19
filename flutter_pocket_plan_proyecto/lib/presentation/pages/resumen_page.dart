@@ -74,26 +74,25 @@ class _ResumenTabsState extends State<_ResumenTabs>
     }
   }
 
-  // Métodos para filtrar y calcular datos
   List<Movimiento> _filtrarMovimientos(String tipo, DateTimeRange range) {
     return _movimientos.where((mov) {
-      return mov.tipo == tipo && 
-             mov.fecha.isAfter(range.start.subtract(const Duration(days: 1))) && 
-             mov.fecha.isBefore(range.end.add(const Duration(days: 1)));
+      return mov.tipo == tipo &&
+          mov.fecha.isAfter(range.start.subtract(const Duration(days: 1))) &&
+          mov.fecha.isBefore(range.end.add(const Duration(days: 1)));
     }).toList();
   }
 
   double _calcularTotal(String tipo, DateTimeRange range) {
     return _filtrarMovimientos(tipo, range)
-      .fold(0, (sum, mov) => sum + mov.monto);
+        .fold(0, (sum, mov) => sum + mov.monto);
   }
 
   Map<String, double> _obtenerDistribucion(String tipo, DateTimeRange range) {
     final movs = _filtrarMovimientos(tipo, range);
     final total = _calcularTotal(tipo, range);
-    
+
     if (total == 0) return {};
-    
+
     return movs.fold<Map<String, double>>({}, (map, mov) {
       map[mov.etiqueta] = (map[mov.etiqueta] ?? 0) + (mov.monto / total * 100);
       return map;
@@ -105,7 +104,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
     final totalEgresos = _calcularTotal('egreso', _dateRange);
     final presupuesto = MovimientoRepository().presupuesto;
     final restante = presupuesto + totalIngresos - totalEgresos;
-    
+
     return 'Presupuesto restante: Q. ${restante.toStringAsFixed(2)}';
   }
 
@@ -143,7 +142,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
 
   List<PieChartSectionData> _buildIngresosChartSections() {
     final distribucion = _obtenerDistribucion('ingreso', _dateRange);
-    
+
     return distribucion.entries.map((entry) {
       final color = _obtenerColorPorEtiqueta(entry.key);
       return PieChartSectionData(
@@ -162,7 +161,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
 
   List<PieChartSectionData> _buildEgresosChartSections() {
     final distribucion = _obtenerDistribucion('egreso', _dateRange);
-    
+
     return distribucion.entries.map((entry) {
       final color = _obtenerColorPorEtiqueta(entry.key);
       return PieChartSectionData(
@@ -179,6 +178,175 @@ class _ResumenTabsState extends State<_ResumenTabs>
     }).toList();
   }
 
+  Future<void> _editarMovimiento(BuildContext context, Movimiento mov, int index) async {
+    final montoController = TextEditingController(text: mov.monto.toString());
+    final conceptoController = TextEditingController(text: mov.concepto);
+    DateTime fechaSeleccionada = mov.fecha;
+    String etiquetaSeleccionada = mov.etiqueta;
+
+    final List<String> etiquetas = mov.tipo == 'ingreso'
+        ? [
+            'Salario',
+            'Freelance',
+            'Inversiones',
+            'Regalo',
+            'Otros',
+          ]
+        : [
+            'Comida',
+            'Transporte',
+            'Entretenimiento',
+            'Servicios',
+            'Renta',
+            'Otros',
+          ];
+
+    final editado = await showDialog<Movimiento>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          title: const Text('Editar Movimiento'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: montoController,
+                  decoration: const InputDecoration(labelText: 'Monto'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: conceptoController,
+                  decoration: const InputDecoration(labelText: 'Concepto'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: etiquetaSeleccionada,
+                  items: etiquetas
+                      .map((e) =>
+                          DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setStateDialog(() => etiquetaSeleccionada = value);
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Etiqueta',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final nuevaFecha = await showDatePicker(
+                      context: ctx,
+                      initialDate: fechaSeleccionada,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (nuevaFecha != null) {
+                      setStateDialog(() => fechaSeleccionada = nuevaFecha);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Fecha',
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${fechaSeleccionada.day}/${fechaSeleccionada.month}/${fechaSeleccionada.year}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const Icon(Icons.calendar_today, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            TextButton(
+              child: const Text('Guardar'),
+              onPressed: () {
+                final nuevoMonto =
+                    double.tryParse(montoController.text) ?? mov.monto;
+                final nuevoConcepto = conceptoController.text.isNotEmpty
+                    ? conceptoController.text
+                    : mov.concepto;
+                final movimientoActualizado = Movimiento(
+                  tipo: mov.tipo,
+                  fecha: fechaSeleccionada,
+                  monto: nuevoMonto,
+                  concepto: nuevoConcepto,
+                  etiqueta: etiquetaSeleccionada,
+                  metodoPago: mov.metodoPago,
+                  tarjetaId: mov.tarjetaId,
+                  tipoTarjeta: mov.tipoTarjeta,
+                  opcionPago: mov.opcionPago,
+                  cuotas: mov.cuotas,
+                );
+                Navigator.of(ctx).pop(movimientoActualizado);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (editado != null) {
+      MovimientoRepository().actualizarMovimiento(index, editado);
+      setState(() => _cargarMovimientos());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Movimiento editado exitosamente'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _eliminarMovimiento(
+      BuildContext context, Movimiento mov, int index) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Movimiento'),
+        content: const Text(
+            '¿Estás seguro de que deseas eliminar este movimiento? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          TextButton(
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      MovimientoRepository().eliminarMovimiento(index);
+      setState(() => _cargarMovimientos());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Movimiento eliminado'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -189,7 +357,10 @@ class _ResumenTabsState extends State<_ResumenTabs>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildIngresosTab(context), _buildEgresosTab(context)],
+            children: [
+              _buildIngresosTab(context),
+              _buildEgresosTab(context),
+            ],
           ),
         ),
       ],
@@ -229,7 +400,8 @@ class _ResumenTabsState extends State<_ResumenTabs>
               IconButton(
                 icon: const Icon(Icons.edit, color: Colors.grey),
                 onPressed: () async {
-                  double? nuevoPresupuesto = await _mostrarDialogoPresupuesto(context, presupuesto);
+                  double? nuevoPresupuesto =
+                      await _mostrarDialogoPresupuesto(context, presupuesto);
                   if (nuevoPresupuesto != null) {
                     setState(() {
                       MovimientoRepository().presupuesto = nuevoPresupuesto;
@@ -258,7 +430,8 @@ class _ResumenTabsState extends State<_ResumenTabs>
     );
   }
 
-  Future<double?> _mostrarDialogoPresupuesto(BuildContext context, double actual) async {
+  Future<double?> _mostrarDialogoPresupuesto(
+      BuildContext context, double actual) async {
     final controlador = TextEditingController(text: actual.toString());
     double? result;
     await showDialog(
@@ -294,106 +467,109 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildPeriodSelector(BuildContext context) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedPeriod,
-                isExpanded: true,
-                items: [
-                  'Día', 'Semana', 'Mes', 'Año', 'Personalizado'
-                ]
-                    .map(
-                      (period) => DropdownMenuItem(
-                        value: period,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedPeriod,
+                  isExpanded: true,
+                  items: [
+                    'Día',
+                    'Semana',
+                    'Mes',
+                    'Año',
+                    'Personalizado'
+                  ]
+                      .map(
+                        (period) => DropdownMenuItem(
+                          value: period,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                            child: Text(period),
                           ),
-                          child: Text(period),
                         ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == 'Personalizado') {
-                    _selectDateRange(context);
-                  } else {
-                    setState(() {
-                      _selectedPeriod = value!;
-                      // Restablece fechas al periodo elegido
-                      if (_selectedPeriod == 'Día') {
-                        _dateRange = DateTimeRange(
-                          start: DateTime.now(),
-                          end: DateTime.now(),
-                        );
-                      } else if (_selectedPeriod == 'Semana') {
-                        _dateRange = DateTimeRange(
-                          start: DateTime.now().subtract(const Duration(days: 6)),
-                          end: DateTime.now(),
-                        );
-                      } else if (_selectedPeriod == 'Mes') {
-                        _dateRange = DateTimeRange(
-                          start: DateTime.now().subtract(const Duration(days: 30)),
-                          end: DateTime.now(),
-                        );
-                      } else if (_selectedPeriod == 'Año') {
-                        _dateRange = DateTimeRange(
-                          start: DateTime.now().subtract(const Duration(days: 365)),
-                          end: DateTime.now(),
-                        );
-                      }
-                    });
-                  }
-                },
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == 'Personalizado') {
+                      _selectDateRange(context);
+                    } else {
+                      setState(() {
+                        _selectedPeriod = value!;
+                        if (_selectedPeriod == 'Día') {
+                          _dateRange = DateTimeRange(
+                            start: DateTime.now(),
+                            end: DateTime.now(),
+                          );
+                        } else if (_selectedPeriod == 'Semana') {
+                          _dateRange = DateTimeRange(
+                            start: DateTime.now().subtract(const Duration(days: 6)),
+                            end: DateTime.now(),
+                          );
+                        } else if (_selectedPeriod == 'Mes') {
+                          _dateRange = DateTimeRange(
+                            start: DateTime.now().subtract(const Duration(days: 30)),
+                            end: DateTime.now(),
+                          );
+                        } else if (_selectedPeriod == 'Año') {
+                          _dateRange = DateTimeRange(
+                            start: DateTime.now().subtract(const Duration(days: 365)),
+                            end: DateTime.now(),
+                          );
+                        }
+                      });
+                    }
+                  },
+                ),
               ),
             ),
           ),
-        ),
-        if (_selectedPeriod == 'Personalizado') // <-- SOLO muestra si está en personalizado
-          IconButton(
-            icon: const Icon(Icons.clear, color: Colors.redAccent),
-            tooltip: "Limpiar filtro de fechas",
-            onPressed: () {
-              setState(() {
-                _selectedPeriod = 'Mes';
-                _dateRange = DateTimeRange(
-                  start: DateTime.now().subtract(const Duration(days: 30)),
-                  end: DateTime.now(),
-                );
-              });
+          if (_selectedPeriod == 'Personalizado')
+            IconButton(
+              icon: const Icon(Icons.clear, color: Colors.redAccent),
+              tooltip: "Limpiar filtro de fechas",
+              onPressed: () {
+                setState(() {
+                  _selectedPeriod = 'Mes';
+                  _dateRange = DateTimeRange(
+                    start: DateTime.now().subtract(const Duration(days: 30)),
+                    end: DateTime.now(),
+                  );
+                });
+              },
+            ),
+          const SizedBox(width: 10),
+          FloatingActionButton(
+            onPressed: () async {
+              final nuevoMovimiento = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RegistroMovimientoScreen(),
+                ),
+              );
+              if (nuevoMovimiento != null && nuevoMovimiento is Movimiento) {
+                _cargarMovimientos();
+              }
             },
+            backgroundColor:
+                _tabController.index == 0 ? _ingresosColor : _egresosColor,
+            mini: true,
+            child: const Icon(Icons.add, color: Colors.white),
           ),
-        const SizedBox(width: 10),
-        FloatingActionButton(
-          onPressed: () async {
-            final nuevoMovimiento = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const RegistroMovimientoScreen(),
-              ),
-            );
-            if (nuevoMovimiento != null && nuevoMovimiento is Movimiento) {
-              _cargarMovimientos();
-            }
-          },
-          backgroundColor:
-              _tabController.index == 0 ? _ingresosColor : _egresosColor,
-          mini: true,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildTabBar() {
     return Container(
@@ -422,38 +598,45 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildIngresosTab(BuildContext context) {
-    final items = _obtenerDistribucion('ingreso', _dateRange).entries.map((entry) {
+    final movimientosFiltrados = _filtrarMovimientos('ingreso', _dateRange);
+
+    final items = movimientosFiltrados.map((mov) {
       final total = _calcularTotal('ingreso', _dateRange);
-      final monto = (total * entry.value / 100).toStringAsFixed(2);
-      
+      final porcentaje = total > 0 ? (mov.monto / total) * 100 : 0;
+      final index = _movimientos.indexOf(mov);
       return _ResumenItem(
-        icon: _obtenerIconoPorEtiqueta(entry.key),
-        label: entry.key,
-        value: '${entry.value.toStringAsFixed(1)}%',
-        amount: monto,
-        color: _obtenerColorPorEtiqueta(entry.key),
+        icon: _obtenerIconoPorEtiqueta(mov.etiqueta),
+        label: mov.etiqueta,
+        value: '${porcentaje.toStringAsFixed(1)}%',
+        amount: mov.monto.toStringAsFixed(2),
+        color: _obtenerColorPorEtiqueta(mov.etiqueta),
+        onEdit: () => _editarMovimiento(context, mov, index),
+        onDelete: () => _eliminarMovimiento(context, mov, index),
       );
     }).toList();
 
     return SingleChildScrollView(
       child: Column(
         children: [
-          if (items.isNotEmpty) SizedBox(
-            height: 250,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 40,
-                  sections: _buildIngresosChartSections(),
+          if (items.isNotEmpty)
+            SizedBox(
+              height: 250,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    sections: _buildIngresosChartSections(),
+                  ),
                 ),
               ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No hay ingresos registrados en este periodo'),
             ),
-          ) else const Padding(
-            padding: EdgeInsets.all(32.0),
-            child: Text('No hay ingresos registrados en este periodo'),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _ResumenList(items: items),
@@ -464,38 +647,45 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildEgresosTab(BuildContext context) {
-    final items = _obtenerDistribucion('egreso', _dateRange).entries.map((entry) {
+    final movimientosFiltrados = _filtrarMovimientos('egreso', _dateRange);
+
+    final items = movimientosFiltrados.map((mov) {
       final total = _calcularTotal('egreso', _dateRange);
-      final monto = (total * entry.value / 100).toStringAsFixed(2);
-      
+      final porcentaje = total > 0 ? (mov.monto / total) * 100 : 0;
+      final index = _movimientos.indexOf(mov);
       return _ResumenItem(
-        icon: _obtenerIconoPorEtiqueta(entry.key),
-        label: entry.key,
-        value: '${entry.value.toStringAsFixed(1)}%',
-        amount: monto,
-        color: _obtenerColorPorEtiqueta(entry.key),
+        icon: _obtenerIconoPorEtiqueta(mov.etiqueta),
+        label: mov.etiqueta,
+        value: '${porcentaje.toStringAsFixed(1)}%',
+        amount: mov.monto.toStringAsFixed(2),
+        color: _obtenerColorPorEtiqueta(mov.etiqueta),
+        onEdit: () => _editarMovimiento(context, mov, index),
+        onDelete: () => _eliminarMovimiento(context, mov, index),
       );
     }).toList();
 
     return SingleChildScrollView(
       child: Column(
         children: [
-          if (items.isNotEmpty) SizedBox(
-            height: 250,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 40,
-                  sections: _buildEgresosChartSections(),
+          if (items.isNotEmpty)
+            SizedBox(
+              height: 250,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    sections: _buildEgresosChartSections(),
+                  ),
                 ),
               ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No hay egresos registrados en este periodo'),
             ),
-          ) else const Padding(
-            padding: EdgeInsets.all(32.0),
-            child: Text('No hay egresos registrados en este periodo'),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _ResumenList(items: items),
@@ -527,6 +717,8 @@ class _ResumenItem extends StatelessWidget {
   final String value;
   final String amount;
   final Color color;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _ResumenItem({
     required this.icon,
@@ -534,6 +726,8 @@ class _ResumenItem extends StatelessWidget {
     required this.value,
     required this.amount,
     required this.color,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -553,13 +747,28 @@ class _ResumenItem extends StatelessWidget {
         ),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(value),
-        trailing: Text(
-          'Q$amount',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Color(0xFF2C3E50),
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Q$amount',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.grey),
+              tooltip: 'Editar',
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              tooltip: 'Eliminar',
+              onPressed: onDelete,
+            ),
+          ],
         ),
       ),
     );

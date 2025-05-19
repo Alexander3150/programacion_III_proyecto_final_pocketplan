@@ -21,6 +21,18 @@ class MovimientoRepository {
     _movimientos.clear();
   }
 
+  void actualizarMovimiento(int index, Movimiento movimientoActualizado) {
+  if (index >= 0 && index < _movimientos.length) {
+    _movimientos[index] = movimientoActualizado;
+  }
+}
+
+void eliminarMovimiento(int index) {
+  if (index >= 0 && index < _movimientos.length) {
+    _movimientos.removeAt(index);
+  }
+}
+
   // Presupuesto
   double get presupuesto => _presupuesto;
   set presupuesto(double value) => _presupuesto = value;
