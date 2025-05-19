@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_pocket_plan_proyecto/presentation/pages/resumen_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/user_model.dart';
@@ -192,7 +193,7 @@ class _IniciarSesionState extends State<IniciarSesion>
         builder:
             (context) => SplashScreen(
               destination:
-                  MiCuentaPage(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
+                  ResumenScreen(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
             ),
       ),
     );
