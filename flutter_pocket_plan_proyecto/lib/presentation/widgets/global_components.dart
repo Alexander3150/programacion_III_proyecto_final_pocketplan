@@ -74,7 +74,9 @@ class GlobalLayout extends StatelessWidget {
                 ? [
                   IconButton(
                     icon: const Icon(Icons.home, color: Colors.white),
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/resumen');
+                    },
                   ),
                 ]
                 : null,
@@ -130,11 +132,13 @@ class GlobalLayout extends StatelessWidget {
             context,
             icon: Icons.pie_chart,
             text: 'Seguimiento de presupuesto',
+            route: '/resumen',
           ),
           _buildDrawerItem(
             context,
             icon: Icons.attach_money,
             text: 'Registro de ingresos y egresos',
+            route: '/ingreso_egreso',
           ),
           _buildDrawerItem(
             context,
@@ -146,17 +150,25 @@ class GlobalLayout extends StatelessWidget {
             context,
             icon: Icons.savings,
             text: 'Simulador de ahorros',
+            route: '/simulador_ahorro',
           ),
           _buildDrawerItem(
             context,
             icon: Icons.money_off,
             text: 'Registro de deudas',
+            route: '/simulador_deuda',
           ),
-          _buildDrawerItem(context, icon: Icons.flag, text: 'Retos de Ahorro'),
+          _buildDrawerItem(
+            context,
+            icon: Icons.flag,
+            text: 'Retos de Ahorro',
+            route: '/retos_de_ahorro',
+          ),
           _buildDrawerItem(
             context,
             icon: Icons.trending_down,
             text: 'Seguimiento de deudas',
+            route: '/seguimineto_deuda',
           ),
           const Divider(thickness: 1),
           _buildDrawerItem(
@@ -227,6 +239,7 @@ class GlobalLayout extends StatelessWidget {
               (index) {
                 switch (index) {
                   case 0:
+                    Navigator.pushNamed(context, '/resumen');
                     break;
                   case 1:
                     break;
