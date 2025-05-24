@@ -8,6 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/credit_card_model.dart';
 import '../../data/models/debit_card_model.dart';
+import '../../data/models/simulador_ahorro.dart';
+import '../../data/models/simulador_deuda.dart';
+import '../../data/models/cuota_ahorro.dart';
+import '../../data/models/cuota_pago.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -350,4 +354,155 @@ class DatabaseHelper {
       whereArgs: [id, userId],
     );
   }
+
+  
+  // ------------------- SIMULADOR AHORRO ------------
+  Future<int> insertSimuladorAhorro(SimuladorAhorro sa) async {
+    final db = await database;
+    return await db.insert(simuladorAhorroTable, sa.toMap());
+  }
+
+  Future<List<SimuladorAhorro>> getSimuladoresAhorroByUser(int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      simuladorAhorroTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return maps.map((map) => SimuladorAhorro.fromMap(map)).toList();
+  }
+
+  Future<int> updateSimuladorAhorro(SimuladorAhorro sa) async {
+    final db = await database;
+    return await db.update(
+      simuladorAhorroTable,
+      sa.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [sa.id, sa.userId],
+    );
+  }
+
+  Future<int> deleteSimuladorAhorro(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      simuladorAhorroTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  // ------------------- SIMULADOR DEUDA --------------
+  Future<int> insertSimuladorDeuda(SimuladorDeuda sd) async {
+    final db = await database;
+    return await db.insert(simuladorDeudaTable, sd.toMap());
+  }
+
+  Future<List<SimuladorDeuda>> getSimuladoresDeudaByUser(int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      simuladorDeudaTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return maps.map((map) => SimuladorDeuda.fromMap(map)).toList();
+  }
+
+  Future<int> updateSimuladorDeuda(SimuladorDeuda sd) async {
+    final db = await database;
+    return await db.update(
+      simuladorDeudaTable,
+      sd.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [sd.id, sd.userId],
+    );
+  }
+
+  Future<int> deleteSimuladorDeuda(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      simuladorDeudaTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  // ------------------- CUOTAS DE AHORRO ------------
+  Future<int> insertCuotaAhorro(CuotaAhorro cuota) async {
+    final db = await database;
+    return await db.insert(cuotaAhorroTable, cuota.toMap());
+  }
+
+  Future<List<CuotaAhorro>> getCuotasAhorroByUser(
+    int simuladorId,
+    int userId,
+  ) async {
+    final db = await database;
+    final result = await db.query(
+      cuotaAhorroTable,
+      where: 'simulador_id = ? AND user_id = ?',
+      whereArgs: [simuladorId, userId],
+      orderBy: 'fecha ASC',
+    );
+    return result.map((map) => CuotaAhorro.fromMap(map)).toList();
+  }
+
+  Future<int> deleteCuotaAhorro(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      cuotaAhorroTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  Future<int> updateCuotaAhorro(CuotaAhorro cuota) async {
+    final db = await database;
+    return await db.update(
+      cuotaAhorroTable,
+      cuota.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [cuota.id, cuota.userId],
+    );
+  }
+
+  // ------------------- CUOTAS DE PAGO DEUDA ------------
+  Future<int> insertCuotaPago(CuotaPago cuota) async {
+    final db = await database;
+    return await db.insert(cuotaPagoTable, cuota.toMap());
+  }
+
+  Future<List<CuotaPago>> getCuotasPagoByUser(
+    int simuladorId,
+    int userId,
+  ) async {
+    final db = await database;
+    final result = await db.query(
+      cuotaPagoTable,
+      where: 'simulador_id = ? AND user_id = ?',
+      whereArgs: [simuladorId, userId],
+      orderBy: 'fecha ASC',
+    );
+    return result.map((map) => CuotaPago.fromMap(map)).toList();
+  }
+
+  Future<int> deleteCuotaPago(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      cuotaPagoTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  Future<int> updateCuotaPago(CuotaPago cuota) async {
+    final db = await database;
+    return await db.update(
+      cuotaPagoTable,
+      cuota.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [cuota.id, cuota.userId],
+    );
+  }
+
+
 }
