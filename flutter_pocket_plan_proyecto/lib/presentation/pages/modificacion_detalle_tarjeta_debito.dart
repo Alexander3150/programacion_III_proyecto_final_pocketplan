@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../data/models/card_manager.dart';
+import '../../data/models/debit_card_model.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
+
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 
 class DebitCardColors {
-  // Paleta de colores verdosos para débito
   static const Color background = Color(0xFFF5FDF7);
   static const Color primary = Color(0xFF2E7D32);
   static const Color secondary = Color(0xFF4CAF50);
@@ -61,22 +62,21 @@ class _ModificacionDetalleTarjetaDebitoContentState
   late TextEditingController _aliasController;
   late TextEditingController _fechaExpiracionController;
 
-  // Variables de estado y validación
   String? _errorBanco;
   String? _errorNumeroTarjeta;
   String? _errorAlias;
   String? _errorFechaExpiracion;
 
-  // FocusNodes para manejar el enfoque
   final FocusNode _bancoFocusNode = FocusNode();
   final FocusNode _numeroTarjetaFocusNode = FocusNode();
   final FocusNode _aliasFocusNode = FocusNode();
   final FocusNode _fechaExpiracionFocusNode = FocusNode();
 
+  late final TarjetaDebitoRepository _debitCardRepository;
+
   @override
   void initState() {
     super.initState();
-    // Inicializar controladores con los datos de la tarjeta
     _bancoController = TextEditingController(text: widget.tarjeta.banco);
     _numeroTarjetaController = TextEditingController(
       text: widget.tarjeta.numero,
@@ -87,6 +87,7 @@ class _ModificacionDetalleTarjetaDebitoContentState
     );
 
     _setupFocusListeners();
+    _debitCardRepository = TarjetaDebitoRepository();
   }
 
   void _setupFocusListeners() {
@@ -115,24 +116,18 @@ class _ModificacionDetalleTarjetaDebitoContentState
       setState(() => _errorFechaExpiracion = 'Ingrese la fecha de expiración');
       return;
     }
-
-    // Validar formato MM/AA (2 dígitos para el año)
     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
       setState(() => _errorFechaExpiracion = 'Formato inválido (MM/AA)');
       return;
     }
-
     final parts = value.split('/');
     final mes = int.tryParse(parts[0]) ?? 0;
     final anio = int.tryParse(parts[1]) ?? 0;
 
-    // Validar mes (1-12)
     if (mes < 1 || mes > 12) {
       setState(() => _errorFechaExpiracion = 'Mes inválido (1-12)');
       return;
     }
-
-    // Validar año (no menor al actual - solo últimos 2 dígitos)
     final currentYear = DateTime.now().year % 100;
     if (anio < currentYear) {
       setState(
@@ -146,14 +141,34 @@ class _ModificacionDetalleTarjetaDebitoContentState
 
   void _validarCampos() {
     setState(() {
-      _errorBanco = _bancoController.text.isEmpty ? 'Ingrese el banco' : null;
-      _errorNumeroTarjeta =
-          _numeroTarjetaController.text.isEmpty ? 'Ingrese el número' : null;
-      _errorAlias =
-          _aliasController.text.isEmpty
-              ? 'Ingrese el Nombre del titular'
-              : null;
+      // Banco: requerido y máximo 50 caracteres
+      if (_bancoController.text.isEmpty) {
+        _errorBanco = 'Ingrese el banco';
+      } else if (_bancoController.text.length > 50) {
+        _errorBanco = 'Máx. 50 caracteres';
+      } else {
+        _errorBanco = null;
+      }
 
+      // Número de tarjeta: requerido y exactamente 4 dígitos
+      if (_numeroTarjetaController.text.isEmpty) {
+        _errorNumeroTarjeta = 'Ingrese el número';
+      } else if (_numeroTarjetaController.text.length != 4) {
+        _errorNumeroTarjeta = 'Debe tener 4 dígitos';
+      } else {
+        _errorNumeroTarjeta = null;
+      }
+
+      // Nombre del titular: requerido y máximo 50 caracteres
+      if (_aliasController.text.isEmpty) {
+        _errorAlias = 'Ingrese el nombre del titular';
+      } else if (_aliasController.text.length > 50) {
+        _errorAlias = 'Máx. 50 caracteres';
+      } else {
+        _errorAlias = null;
+      }
+
+      // Fecha de expiración: requerido y con validación de formato
       if (_fechaExpiracionController.text.isEmpty) {
         _errorFechaExpiracion = 'Ingrese la fecha de expiración';
       } else {
@@ -162,40 +177,49 @@ class _ModificacionDetalleTarjetaDebitoContentState
     });
   }
 
-  void _actualizarTarjeta() {
+  Future<void> _actualizarTarjeta() async {
     if (!widget.modoEdicion) return;
-
     _validarCampos();
-
     if (_errorBanco == null &&
         _errorNumeroTarjeta == null &&
         _errorAlias == null &&
         _errorFechaExpiracion == null) {
       final tarjetaActualizada = DebitCard(
         id: widget.tarjeta.id,
+        userId: widget.tarjeta.userId, // <- ¡IMPORTANTE!
         banco: _bancoController.text,
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
         expiracion: _fechaExpiracionController.text,
       );
 
-      CardManager().updateDebitCard(widget.tarjeta.id, tarjetaActualizada);
+      final result = await _debitCardRepository.updateTarjetaDebito(
+        tarjetaActualizada,
+      );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Tarjeta actualizada con éxito'),
-          backgroundColor: DebitCardColors.secondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      if (result > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Tarjeta actualizada con éxito'),
+            backgroundColor: DebitCardColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
-      );
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo actualizar la tarjeta'),
+            backgroundColor: DebitCardColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -244,7 +268,10 @@ class _ModificacionDetalleTarjetaDebitoContentState
                 errorText: _errorBanco,
                 editable: widget.modoEdicion,
                 focusNode: _bancoFocusNode,
+                maxLength: 50,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
+
               const SizedBox(height: 16),
 
               // Campo de número de tarjeta con tooltip
@@ -258,12 +285,16 @@ class _ModificacionDetalleTarjetaDebitoContentState
                 focusNode: _numeroTarjetaFocusNode,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 helperText:
                     widget.modoEdicion
                         ? 'Por temas de seguridad, solo ingrese los últimos 4 dígitos de su tarjeta. Esto ayuda a proteger sus datos.'
                         : null,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
+
               const SizedBox(height: 16),
 
               _buildTextFieldWithIcon(
@@ -274,7 +305,10 @@ class _ModificacionDetalleTarjetaDebitoContentState
                 errorText: _errorAlias,
                 editable: widget.modoEdicion,
                 focusNode: _aliasFocusNode,
+                maxLength: 40,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
+
               const SizedBox(height: 16),
 
               // Campo de fecha de expiración con formato MM/AA
@@ -379,6 +413,14 @@ class _ModificacionDetalleTarjetaDebitoContentState
             style: TextStyle(color: DebitCardColors.textDark),
             maxLength: maxLength,
             inputFormatters: inputFormatters,
+            // Esto oculta el contador aunque haya maxLength:
+            buildCounter:
+                (
+                  BuildContext context, {
+                  required int currentLength,
+                  required bool isFocused,
+                  int? maxLength,
+                }) => null,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -389,13 +431,12 @@ class _ModificacionDetalleTarjetaDebitoContentState
               prefixIcon: Icon(
                 icon,
                 color:
-                    widget.modoEdicion
+                    editable
                         ? (focusNode.hasFocus
                             ? const Color.fromARGB(255, 94, 216, 105)
                             : DebitCardColors.secondary)
-                        : Colors.grey, // si no está en modo edición
+                        : Colors.grey,
               ),
-
               hintText: hint,
               errorText: editable ? errorText : null,
               errorStyle: TextStyle(color: DebitCardColors.error),
@@ -461,7 +502,6 @@ class _ModificacionDetalleTarjetaDebitoContentState
                 ),
               ),
             ),
-            // Para que se muestre si es para modificar  y que no se muestre si es para ver detalles.
             if (widget.modoEdicion) ...[
               const SizedBox(width: 8),
               Tooltip(
@@ -564,19 +604,13 @@ class _ExpirationDateFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     var newText = newValue.text;
+    if (newText.length > 5) return oldValue;
 
-    if (newText.length > 5) {
-      return oldValue;
-    }
-
-    // Eliminar todos los caracteres no numéricos
     newText = newText.replaceAll(RegExp(r'[^0-9]'), '');
 
-    // Insertar la barra después de los primeros 2 dígitos
     if (newText.length >= 2) {
       newText = '${newText.substring(0, 2)}/${newText.substring(2)}';
     }
-
     return TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newText.length),
