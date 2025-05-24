@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/api/email_service.dart';
-import '../../data/models/user_model.dart';
+import '../../data/models/repositories/usuario_repository.dart';
 import 'code_validation_page.dart';
 
 /// Paleta de colores con fondo claro
@@ -43,6 +43,12 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
 
   bool _isButtonPressed = false;
   bool _isTextButtonPressed = false;
+
+  final UsuarioRepository _usuarioRepository = UsuarioRepository();
+
+  bool _isSending = false; // True mientras se envía código y navega
+  bool _buttonsDisabled =
+      false; // Se pone en true al enviar código correctamente
 
   @override
   void initState() {
@@ -127,63 +133,91 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
     }
   }
 
-  /// Verifica coincidencia de credenciales
-  bool _credentialsMatch() {
-    final users = UserModel.userList;
+  /// Verifica coincidencia de credenciales (en la base de datos)
+  Future<bool> _credentialsMatch() async {
     final email = _emailController.text.trim();
     final username = _usernameController.text.trim();
 
-    return users.any(
-      (user) =>
-          user.email.toLowerCase() == email.toLowerCase() &&
-          user.username.toLowerCase() == username.toLowerCase(),
-    );
+    final user = await _usuarioRepository.getUsuarioByUsername(username);
+    return user != null && user.email.toLowerCase() == email.toLowerCase();
   }
 
-  void _validateFields() {
+  void _validateFields() async {
+    if (_isSending || _buttonsDisabled) return;
+
+    // Validaciones sincrónicas primero
+    String? emailError;
+    String? usernameError;
+    bool showUsernameError = false;
+
+    // Validar email
+    if (_emailController.text.isEmpty) {
+      emailError = 'Por favor ingrese su correo electrónico';
+    } else if (!_isValidEmail(_emailController.text)) {
+      emailError = 'Ingrese un correo electrónico válido';
+    }
+
+    // Validar username
+    if (_usernameController.text.isEmpty) {
+      usernameError = 'Por favor ingrese su nombre de usuario';
+      showUsernameError = true;
+    } else if (_usernameController.text.length < 2) {
+      usernameError = 'Mínimo 2 caracteres';
+      showUsernameError = true;
+    } else if (_usernameController.text.length > 40) {
+      usernameError = 'Máximo 40 caracteres';
+      showUsernameError = true;
+    }
+
+    // Aplica errores visuales antes de hacer await
     setState(() {
+      _emailError = emailError;
+      _usernameError = usernameError;
+      _showUsernameError = showUsernameError;
       _mismatchError = null;
+    });
 
-      // Validar email
-      if (_emailController.text.isEmpty) {
-        _emailError = 'Por favor ingrese su correo electrónico';
-      } else if (!_isValidEmail(_emailController.text)) {
-        _emailError = 'Ingrese un correo electrónico válido';
-      } else {
-        _emailError = null;
-      }
+    // Si hay errores visuales, no continua
+    if (emailError != null || showUsernameError) return;
 
-      // Validar nombre de usuario
-      if (_usernameController.text.isEmpty) {
-        _usernameError = 'Por favor ingrese su nombre de usuario';
-        _showUsernameError = true;
-      } else if (_usernameController.text.length < 2) {
-        _usernameError = 'Mínimo 2 caracteres';
-        _showUsernameError = true;
-      } else if (_usernameController.text.length > 40) {
-        _usernameError = 'Máximo 40 caracteres';
-        _showUsernameError = true;
-      } else {
-        _usernameError = null;
-        _showUsernameError = false;
-      }
-
-      if (_emailError != null || _showUsernameError) return;
-
-      if (!_credentialsMatch()) {
+    // Validación asíncrona: verifica coincidencia en la base de datos
+    if (!await _credentialsMatch()) {
+      setState(() {
         _mismatchError =
             'No se encontró una coincidencia entre el nombre de usuario y el correo electrónico. Por favor, inténtelo de nuevo.';
-        return;
-      }
+      });
+      return;
+    }
 
-      _showSuccessAndNavigate();
-    });
+    // Si todo bien, avanza
+    await _showSuccessAndNavigate();
   }
 
-  void _showSuccessAndNavigate() async {
+  Future<void> _showSuccessAndNavigate() async {
+    setState(() {
+      _isSending = true;
+      _buttonsDisabled = true;
+    });
+
     final email = _emailController.text.trim();
     final username = _usernameController.text.trim();
-    final code = UserModel.generateRecoveryCode(email, username);
+
+    final user = await _usuarioRepository.getUsuarioByUsername(username);
+    if (user == null) {
+      setState(() {
+        _isSending = false;
+        _buttonsDisabled = false;
+      });
+      return;
+    }
+
+    final code = _generateCode();
+    final updatedUser = user.copyWith(
+      recoveryCode: code,
+      codeExpiration:
+          DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+    );
+    await _usuarioRepository.updateUsuario(updatedUser);
 
     final enviado = await EmailJSService.sendRecoveryEmail(
       email: email,
@@ -198,8 +232,8 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
           duration: Duration(seconds: 2),
         ),
       );
-
-      Future.delayed(const Duration(seconds: 2), () {
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -208,8 +242,13 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
                     CodeValidationPage(email: email, username: username),
           ),
         );
-      });
+      }
+      // No se desbloquean los botones, se navega y termina el ciclo.
     } else {
+      setState(() {
+        _isSending = false;
+        _buttonsDisabled = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Error al enviar el correo'),
@@ -220,111 +259,143 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
     }
   }
 
+  // Generador de código de recuperación
+  String _generateCode() {
+    final random = DateTime.now().millisecondsSinceEpoch % 1000000;
+    return random.toString().padLeft(6, '0');
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 400;
 
-    return Scaffold(
-      backgroundColor: RecoveryColors.background,
-      appBar: AppBar(
-        title: Text(
-          'Recuperar contraseña',
-          style: TextStyle(
-            color: RecoveryColors.textLight,
-            fontSize: isSmallScreen ? 22 : 20,
-            fontWeight: FontWeight.bold,
+    // Bloquea botón físico de atrás si está enviando código o enviado
+    return WillPopScope(
+      onWillPop: () async {
+        // Si NO está enviando y NO están deshabilitados los botones:
+        if (!_isSending && !_buttonsDisabled) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+        // Siempre retornamos false para evitar el pop predeterminado
+        return false;
+      },
+      child: AbsorbPointer(
+        absorbing: _isSending || _buttonsDisabled,
+        child: Scaffold(
+          backgroundColor: RecoveryColors.background,
+          appBar: AppBar(
+            title: Text(
+              'Recuperar contraseña',
+              style: TextStyle(
+                color: RecoveryColors.textLight,
+                fontSize: isSmallScreen ? 22 : 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            backgroundColor: RecoveryColors.primary,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed:
+                  (_isSending || _buttonsDisabled)
+                      ? null
+                      : () => Navigator.pop(context),
+            ),
           ),
-        ),
-        centerTitle: true,
-        backgroundColor: RecoveryColors.primary,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 20 : size.width * 0.1,
-            vertical: isSmallScreen ? 20 : 30,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: RecoveryColors.accent.withOpacity(0.2),
-                  ),
-                  child: Icon(
-                    Icons.lock_reset,
-                    color: RecoveryColors.primary,
-                    size: isSmallScreen ? 70 : 90,
-                  ),
-                ),
-
-                SizedBox(height: isSmallScreen ? 30 : 40),
-
-                if (_mismatchError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text(
-                      _mismatchError!,
-                      style: TextStyle(
-                        color: RecoveryColors.error,
-                        fontSize: isSmallScreen ? 14 : 16,
+          body: GestureDetector(
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 20 : size.width * 0.1,
+                vertical: isSmallScreen ? 20 : 30,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: RecoveryColors.accent.withOpacity(0.2),
+                      ),
+                      child: Icon(
+                        Icons.lock_reset,
+                        color: RecoveryColors.primary,
+                        size: isSmallScreen ? 70 : 90,
                       ),
                     ),
-                  ),
-                //Estructura de toiltip
-                _buildTextFieldWithTooltip(
-                  controller: _emailController,
-                  label: 'Correo Electrónico',
-                  tooltipMessage:
-                      'Por favor, ingrese el correo electrónico con el que se registró en su cuenta.',
-                  hintText: 'ejemplo@pocketplan.com',
-                  errorText: _emailError,
-                  isSmallScreen: isSmallScreen,
-                  focusNode: _emailFocusNode,
-                  borderColor: _emailBorderColor,
-                  icon: Icons.email_outlined,
+                    SizedBox(height: isSmallScreen ? 30 : 40),
+                    if (_mismatchError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Text(
+                          _mismatchError!,
+                          style: TextStyle(
+                            color: RecoveryColors.error,
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                        ),
+                      ),
+                    _buildTextFieldWithTooltip(
+                      controller: _emailController,
+                      label: 'Correo Electrónico',
+                      tooltipMessage:
+                          'Por favor, ingrese el correo electrónico con el que se registró en su cuenta.',
+                      hintText: 'ejemplo@pocketplan.com',
+                      errorText: _emailError,
+                      isSmallScreen: isSmallScreen,
+                      focusNode: _emailFocusNode,
+                      borderColor: _emailBorderColor,
+                      icon: Icons.email_outlined,
+                      maxLength: 100, // Puedes limitar si gustas
+                    ),
+                    SizedBox(height: isSmallScreen ? 20 : 30),
+                    _buildTextFieldWithTooltip(
+                      controller: _usernameController,
+                      label: 'Nombre de Usuario',
+                      tooltipMessage:
+                          'Introduzca su nombre de usuario tal y como lo configuró al crear su cuenta (máx. 40 caracteres).',
+                      errorText: _showUsernameError ? _usernameError : null,
+                      isSmallScreen: isSmallScreen,
+                      focusNode: _usernameFocusNode,
+                      borderColor: _usernameBorderColor,
+                      icon: Icons.person_outline,
+                      maxLength: 40, // Límite físico agregado
+                    ),
+                    SizedBox(height: isSmallScreen ? 40 : 60),
+                    _build3DButton(
+                      onPressed:
+                          (_buttonsDisabled || _isSending)
+                              ? null
+                              : _validateFields,
+                      label: _isSending ? 'Enviando...' : 'ENVIAR CÓDIGO',
+                      icon: Icons.send,
+                      isSmallScreen: isSmallScreen,
+                      width:
+                          isSmallScreen ? size.width * 0.8 : size.width * 0.6,
+                      disabled: _buttonsDisabled || _isSending,
+                    ),
+                    SizedBox(height: isSmallScreen ? 30 : 40),
+                    _build3DTextButton(
+                      onPressed:
+                          (_buttonsDisabled || _isSending)
+                              ? null
+                              : () => Navigator.pushReplacementNamed(
+                                context,
+                                '/login',
+                              ),
+                      label: 'Volver a inicio de sesión',
+                      icon: Icons.arrow_back_rounded,
+                      isSmallScreen: isSmallScreen,
+                      disabled: _buttonsDisabled || _isSending,
+                    ),
+                  ],
                 ),
-
-                SizedBox(height: isSmallScreen ? 20 : 30),
-
-                _buildTextFieldWithTooltip(
-                  controller: _usernameController,
-                  label: 'Nombre de Usuario',
-                  tooltipMessage:
-                      'Introduzca su nombre de usuario tal y como lo configuró al crear su cuenta.',
-                  errorText: _showUsernameError ? _usernameError : null,
-                  isSmallScreen: isSmallScreen,
-                  focusNode: _usernameFocusNode,
-                  borderColor: _usernameBorderColor,
-                  icon: Icons.person_outline,
-                ),
-
-                SizedBox(height: isSmallScreen ? 40 : 60),
-
-                _build3DButton(
-                  onPressed: _validateFields,
-                  label: 'ENVIAR CÓDIGO',
-                  icon: Icons.send,
-                  isSmallScreen: isSmallScreen,
-                  width: isSmallScreen ? size.width * 0.8 : size.width * 0.6,
-                ),
-
-                SizedBox(height: isSmallScreen ? 30 : 40),
-
-                _build3DTextButton(
-                  onPressed: () => Navigator.pop(context),
-                  label: 'Volver a inicio de sesión',
-                  icon: Icons.arrow_back_rounded,
-                  isSmallScreen: isSmallScreen,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -342,6 +413,7 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
     required FocusNode focusNode,
     required Color borderColor,
     required IconData icon,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,6 +452,11 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
             controller: controller,
             focusNode: focusNode,
             style: TextStyle(fontSize: isSmallScreen ? 16 : 18),
+            maxLength: maxLength,
+            inputFormatters:
+                maxLength != null
+                    ? [LengthLimitingTextInputFormatter(maxLength)]
+                    : null,
             decoration: InputDecoration(
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 20,
@@ -430,6 +507,7 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: RecoveryColors.error, width: 2),
               ),
+              counterText: maxLength != null ? null : '',
             ),
           ),
         ),
@@ -443,7 +521,7 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
     final overlayEntry = OverlayEntry(
       builder:
           (context) => Positioned(
-            bottom: 377, // Ajusta según lo lejos  del borde inferior
+            bottom: 377, // Ajusta según lo lejos del borde inferior
             left: 20, // Margen izquierdo
             right: 20, // Margen derecho
             child: Material(
@@ -474,63 +552,73 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
   }
 
   Widget _build3DButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required String label,
     required IconData icon,
     required bool isSmallScreen,
     required double width,
+    bool disabled = false,
   }) {
     return SizedBox(
       width: width,
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isButtonPressed = true),
-        onTapUp: (_) => setState(() => _isButtonPressed = false),
-        onTapCancel: () => setState(() => _isButtonPressed = false),
-        onTap: onPressed,
-        child: Transform(
-          transform:
-              Matrix4.identity()..translate(0.0, _isButtonPressed ? 2.0 : 0.0),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              gradient: const LinearGradient(
-                colors: [RecoveryColors.primary, RecoveryColors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Opacity(
+        opacity: disabled ? 0.5 : 1.0,
+        child: GestureDetector(
+          onTapDown:
+              disabled ? null : (_) => setState(() => _isButtonPressed = true),
+          onTapUp:
+              disabled ? null : (_) => setState(() => _isButtonPressed = false),
+          onTapCancel:
+              disabled ? null : () => setState(() => _isButtonPressed = false),
+          onTap: disabled ? null : onPressed,
+          child: Transform(
+            transform:
+                Matrix4.identity()
+                  ..translate(0.0, _isButtonPressed && !disabled ? 2.0 : 0.0),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: const LinearGradient(
+                  colors: [RecoveryColors.primary, RecoveryColors.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow:
+                    _isButtonPressed && !disabled
+                        ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            offset: const Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ]
+                        : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            offset: const Offset(0, 6),
+                            blurRadius: 8,
+                          ),
+                        ],
               ),
-              boxShadow:
-                  _isButtonPressed
-                      ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ]
-                      : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          offset: const Offset(0, 6),
-                          blurRadius: 8,
-                        ),
-                      ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 16 : 18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: Colors.white, size: 24),
-                  const SizedBox(width: 10),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen ? 16 : 18,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.white, size: 24),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isSmallScreen ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -540,57 +628,70 @@ class _RecoverPasswordPageState extends State<RecoverPasswordPage> {
   }
 
   Widget _build3DTextButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required String label,
     required IconData icon,
     required bool isSmallScreen,
+    bool disabled = false,
   }) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isTextButtonPressed = true),
-      onTapUp: (_) => setState(() => _isTextButtonPressed = false),
-      onTapCancel: () => setState(() => _isTextButtonPressed = false),
-      onTap: onPressed,
-      child: Transform(
-        transform:
-            Matrix4.identity()
-              ..translate(0.0, _isTextButtonPressed ? 1.0 : 0.0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: RecoveryColors.background,
-            boxShadow:
-                _isTextButtonPressed
-                    ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        offset: const Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ]
-                    : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        offset: const Offset(0, 3),
-                        blurRadius: 4,
-                      ),
-                    ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: RecoveryColors.primary, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: RecoveryColors.primary,
-                  fontSize: isSmallScreen ? 14 : 16,
-                  fontWeight: FontWeight.bold,
-                  decoration: TextDecoration.underline,
+    return Opacity(
+      opacity: disabled ? 0.6 : 1.0,
+      child: GestureDetector(
+        onTapDown:
+            disabled
+                ? null
+                : (_) => setState(() => _isTextButtonPressed = true),
+        onTapUp:
+            disabled
+                ? null
+                : (_) => setState(() => _isTextButtonPressed = false),
+        onTapCancel:
+            disabled
+                ? null
+                : () => setState(() => _isTextButtonPressed = false),
+        onTap: disabled ? null : onPressed,
+        child: Transform(
+          transform:
+              Matrix4.identity()
+                ..translate(0.0, _isTextButtonPressed && !disabled ? 1.0 : 0.0),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: RecoveryColors.background,
+              boxShadow:
+                  _isTextButtonPressed && !disabled
+                      ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          offset: const Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ]
+                      : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          offset: const Offset(0, 3),
+                          blurRadius: 4,
+                        ),
+                      ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: RecoveryColors.primary, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: RecoveryColors.primary,
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
