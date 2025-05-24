@@ -25,8 +25,8 @@ class ResumenScreen extends StatelessWidget {
       body: const _ResumenTabs(),
       mostrarDrawer: true,
       navIndex: 0,
-      //mostrarBotonInforme: true,
-      //tipoInforme: 'financiero',
+      mostrarBotonInforme: true,
+      tipoInforme: 'financiero',
     );
   }
 }
@@ -73,21 +73,41 @@ class _ResumenTabsState extends State<_ResumenTabs>
         Navigator.pushReplacementNamed(context, '/resumen');
         return false;
       },
-      child: Column(
-        children: [
-          _buildBudgetDisplay(context, userProvider),
-          _buildPeriodSelector(context),
-          _buildTabBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTab(context, 'ingreso'),
-                _buildTab(context, 'egreso'),
-              ],
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Detecta si es pantalla ancha (tablet o landscape)
+          final isWide = constraints.maxWidth > 800;
+          final isTall = constraints.maxHeight > 800;
+          final padding = EdgeInsets.symmetric(
+            horizontal: isWide ? constraints.maxWidth * 0.13 : 0,
+          );
+
+          Widget contenido = Column(
+            children: [
+              Padding(
+                padding: padding,
+                child: _buildBudgetDisplay(context, userProvider),
+              ),
+              Padding(padding: padding, child: _buildPeriodSelector(context)),
+              Padding(padding: padding, child: _buildTabBar()),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTab(context, 'ingreso'),
+                    _buildTab(context, 'egreso'),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          // Para tablets o modo horizontal, centra la columna y le da ancho máximo
+          if (isWide) {
+            return Center(child: Container(width: 700, child: contenido));
+          }
+          return contenido;
+        },
       ),
     );
   }
@@ -119,9 +139,11 @@ class _ResumenTabsState extends State<_ResumenTabs>
       final movimientos = await MovimientoRepository().getMovimientosByUser(
         user.id!,
       );
-      setState(() {
-        _movimientos = movimientos;
-      });
+      if (mounted) {
+        setState(() {
+          _movimientos = movimientos;
+        });
+      }
     }
   }
 
@@ -221,11 +243,14 @@ class _ResumenTabsState extends State<_ResumenTabs>
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Editar presupuesto mensual inicial'),
-          content: TextField(
-            controller: controlador,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Presupuesto mensual inicial',
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 350),
+            child: TextField(
+              controller: controlador,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Presupuesto mensual inicial',
+              ),
             ),
           ),
           actions: [
@@ -261,6 +286,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
       children: [
         Container(
           margin: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxWidth: 700),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF18BC9C), Color(0xFF2980B9)],
@@ -288,13 +314,16 @@ class _ResumenTabsState extends State<_ResumenTabs>
                     size: 36,
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    "PRESUPUESTO ACTUAL",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      letterSpacing: 1.1,
+                  Flexible(
+                    child: Text(
+                      "PRESUPUESTO ACTUAL",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        letterSpacing: 1.1,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const Spacer(),
@@ -320,13 +349,18 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                "Q. ${presupuesto.toStringAsFixed(2)}",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  letterSpacing: 1.2,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Q. ${presupuesto.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 36,
+                    letterSpacing: 1.2,
+                  ),
+                  maxLines: 1,
                 ),
               ),
               if (_presupuestoInicial != null)
@@ -336,12 +370,15 @@ class _ResumenTabsState extends State<_ResumenTabs>
                     children: [
                       Icon(Icons.flag, color: Colors.white70, size: 18),
                       const SizedBox(width: 4),
-                      Text(
-                        'Presupuesto mensual inicial: Q. ${_presupuestoInicial!.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          'Presupuesto mensual inicial: Q. ${_presupuestoInicial!.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -352,9 +389,15 @@ class _ResumenTabsState extends State<_ResumenTabs>
                 children: [
                   Icon(Icons.date_range, color: Colors.white70, size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    'Periodo: ${_dateRange.start.day}/${_dateRange.start.month} - ${_dateRange.end.day}/${_dateRange.end.month}',
-                    style: const TextStyle(fontSize: 13, color: Colors.white60),
+                  Flexible(
+                    child: Text(
+                      'Periodo: ${_dateRange.start.day}/${_dateRange.start.month} - ${_dateRange.end.day}/${_dateRange.end.month}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white60,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -531,6 +574,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
   }
 
   Widget _buildTabBar() {
+    final ancho = MediaQuery.of(context).size.width;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -544,9 +588,7 @@ class _ResumenTabsState extends State<_ResumenTabs>
             width: 3,
             color: _tabController.index == 0 ? _ingresosColor : _egresosColor,
           ),
-          insets: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width * 0.1,
-          ),
+          insets: EdgeInsets.symmetric(horizontal: ancho * 0.1),
         ),
         labelColor: _tabController.index == 0 ? _ingresosColor : _egresosColor,
         unselectedLabelColor: Colors.grey[600],
@@ -565,26 +607,45 @@ class _ResumenTabsState extends State<_ResumenTabs>
     final totalTipo = _calcularTotal(tipo, _dateRange);
     final distribucion = _obtenerDistribucion(tipo, _dateRange);
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          if (distribucion.isNotEmpty)
-            ResumenGrafico(
-              distribucion: distribucion,
-              obtenerColorPorEtiqueta: _obtenerColorPorEtiqueta,
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Text(
-                tipo == 'ingreso'
-                    ? 'No hay ingresos registrados en este periodo'
-                    : 'No hay gastos registrados en este periodo',
-              ),
-            ),
-          ..._buildGroupedList(context, tipo, movimientos, totalTipo),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding:
+              constraints.maxWidth > 700
+                  ? EdgeInsets.symmetric(
+                    horizontal: constraints.maxWidth * 0.12,
+                  )
+                  : EdgeInsets.zero,
+          child: Column(
+            children: [
+              if (distribucion.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: SizedBox(
+                    height:
+                        constraints.maxWidth < 480
+                            ? 230
+                            : (constraints.maxWidth > 900 ? 330 : 280),
+                    child: ResumenGrafico(
+                      distribucion: distribucion,
+                      obtenerColorPorEtiqueta: _obtenerColorPorEtiqueta,
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    tipo == 'ingreso'
+                        ? 'No hay ingresos registrados en este periodo'
+                        : 'No hay gastos registrados en este periodo',
+                  ),
+                ),
+              ..._buildGroupedList(context, tipo, movimientos, totalTipo),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -614,7 +675,6 @@ class _ResumenTabsState extends State<_ResumenTabs>
           movimientos: listaMovs,
           tipo: tipo,
           onUpdate: (_) async => await _cargarUsuarioYMovimientos(),
-          // <-- AGREGA ESTAS DOS LÍNEAS:
           buscarDatosTarjeta: _buscarDatosTarjeta,
           metodoPagoDetalle: _buildMetodoPagoDetalle,
         ),
