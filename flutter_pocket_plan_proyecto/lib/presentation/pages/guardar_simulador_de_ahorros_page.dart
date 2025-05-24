@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
+import '../../data/models/repositories/cuota_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
 import '../../data/models/simulador_ahorro.dart';
 import '../widgets/global_components.dart';
+import '../providers/user_provider.dart';
 import 'datos_ahorro_page.dart';
+import 'editar_simulador_de_ahorros_page.dart';
 import 'simulador_de_ahorros_page.dart';
 
-// Colores personalizados mejorados con paleta más armoniosa
 class AppColors {
   static const Color primary = Color(0xFF2E7D32);
   static const Color primaryDark = Color(0xFF1B5E20);
@@ -23,22 +28,35 @@ class AppColors {
   static const Color shadow = Color(0x1A000000);
 }
 
-// Lista global temporal
-List<SimuladorAhorro> simuladoresGuardados = [];
-
 class GuardarSimuladorDeAhorrosPage extends StatelessWidget {
   const GuardarSimuladorDeAhorrosPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GlobalLayout(
-      titulo: 'Simuladores Guardados',
-      mostrarDrawer: true,
-      mostrarBotonHome: true,
-      navIndex: 0,
-      body: const _GuardarSimuladorDeAhorrosWidget(),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/resumen');
+        return false; // Previene el pop normal
+      },
+      child: GlobalLayout(
+        titulo: 'Simuladores Guardados',
+        mostrarDrawer: true,
+        mostrarBotonHome: true,
+       // mostrarBotonInforme: true,
+       // tipoInforme: 'ahorro',
+        navIndex: 0,
+        body: const _GuardarSimuladorDeAhorrosWidget(),
+      ),
     );
   }
+}
+
+// --- Modelo auxiliar para poder ordenar por progreso
+class SimuladorAhorroConProgreso {
+  final SimuladorAhorro simulador;
+  final double progreso;
+
+  SimuladorAhorroConProgreso(this.simulador, this.progreso);
 }
 
 class _GuardarSimuladorDeAhorrosWidget extends StatefulWidget {
@@ -51,22 +69,65 @@ class _GuardarSimuladorDeAhorrosWidget extends StatefulWidget {
 
 class _GuardarSimuladorDeAhorrosWidgetState
     extends State<_GuardarSimuladorDeAhorrosWidget> {
-  String _formatDate(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
+  final SimuladorAhorroRepository _repository = SimuladorAhorroRepository();
+  final CuotaAhorroRepository _cuotaRepo = CuotaAhorroRepository();
+  List<SimuladorAhorroConProgreso> simuladoresGuardados = [];
+  bool _isLoading = true;
+  int? _userId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    _userId = userProvider.usuario?.id;
+    _loadSimuladores();
   }
 
-  double calcularProgreso(SimuladorAhorro simulador) {
-    double montoRestante = simulador.monto - simulador.montoInicial;
-    if (montoRestante < 0) montoRestante = 0;
-    if (simulador.monto == 0) return 0.0;
-    return (simulador.monto - montoRestante) / simulador.monto;
+  Future<void> _loadSimuladores() async {
+    setState(() => _isLoading = true);
+
+    if (_userId != null) {
+      // 1. Obtén los simuladores normales
+      final simuladores = await _repository.getSimuladoresAhorroByUser(
+        _userId!,
+      );
+
+      // 2. Convierte a SimuladorAhorroConProgreso usando Future.wait para obtener los progresos
+      final progresos = await Future.wait(
+        simuladores.map((s) async {
+          final double ahorrado = await _cuotaRepo.getTotalAhorradoPorSimulador(
+            s.id!,
+            _userId!,
+          );
+          final double progreso =
+              s.monto == 0 ? 0.0 : ((ahorrado) / s.monto).clamp(0.0, 1.0);
+          return SimuladorAhorroConProgreso(s, progreso);
+        }),
+      );
+
+      // 3. Ordena los progresos antes de asignarlos
+      progresos.sort((a, b) {
+        if (a.progreso >= 1 && b.progreso < 1) return 1;
+        if (a.progreso < 1 && b.progreso >= 1) return -1;
+        return a.progreso.compareTo(b.progreso);
+      });
+
+      simuladoresGuardados = progresos; // <- ¡ESTE debe ser progresos!
+    } else {
+      simuladoresGuardados = [];
+    }
+    setState(() => _isLoading = false);
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('dd/MM/yyyy').format(date);
   }
 
   Color _getProgressColor(double progreso) {
     final porcentaje = progreso * 100;
     if (porcentaje <= 25) return AppColors.error;
     if (porcentaje <= 50) return AppColors.warning;
-    if (porcentaje <= 75) return Colors.amber;
+    if (porcentaje <= 75) return const Color.fromARGB(255, 0, 195, 255);
     return AppColors.success;
   }
 
@@ -81,91 +142,104 @@ class _GuardarSimuladorDeAhorrosWidgetState
   void _eliminarSimulador(int index) async {
     bool confirm = await _mostrarConfirmacionEliminar();
     if (confirm) {
-      setState(() {
-        final eliminado = simuladoresGuardados.removeAt(index);
-
-        // Mostrar snackbar con opción de deshacer
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Simulador eliminado'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'DESHACER',
-              textColor: Colors.white,
-              onPressed: () {
-                setState(() {
-                  simuladoresGuardados.insert(index, eliminado);
-                });
-              },
-            ),
-          ),
+      final SimuladorAhorroConProgreso eliminado = simuladoresGuardados[index];
+      if (_userId != null) {
+        await _repository.deleteSimuladorAhorro(
+          eliminado.simulador.id!,
+          _userId!,
         );
-      });
+        await _loadSimuladores();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Simulador eliminado'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
   Future<bool> _mostrarConfirmacionEliminar() async {
     return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar simulador',
-            style: TextStyle(color: AppColors.textDark)),
-        content: const Text('¿Estás seguro de que deseas eliminar este simulador?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textDark)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text(
+                  'Eliminar simulador',
+                  style: TextStyle(color: AppColors.textDark),
+                ),
+                content: const Text(
+                  '¿Estás seguro de que deseas eliminar este simulador?',
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                backgroundColor: Colors.white,
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(color: AppColors.textDark),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text(
+                      'Eliminar',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Eliminar',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
-  void _editarSimulador(int index) async {
-    final actualizado = await Navigator.pushNamed(
+  void _editarSimulador(SimuladorAhorro simulador) async {
+    final actualizado = await Navigator.push(
       context,
-      '/editar_simulador',
-      arguments: {'index': index, 'simulador': simuladoresGuardados[index]},
+      MaterialPageRoute(
+        builder:
+            (context) => EditarSimuladorDeAhorrosPage(simulador: simulador),
+      ),
     );
 
     if (actualizado == true) {
-      setState(() {});
+      await _loadSimuladores();
       _mostrarMensajeEmergente('¡Simulador actualizado!', AppColors.success);
     }
   }
 
   void _verDatosSimulador(int index) async {
-    final simulador = simuladoresGuardados[index];
+    final simulador = simuladoresGuardados[index].simulador;
     await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            DatosAhorroPage(simulador: simulador),
+        pageBuilder:
+            (context, animation, secondaryAnimation) =>
+                DatosAhorroPage(simulador: simulador),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOut;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
           return SlideTransition(
             position: animation.drive(tween),
             child: child,
@@ -173,7 +247,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
         },
       ),
     );
-    setState(() {});
+    await _loadSimuladores();
   }
 
   void _mostrarMensajeEmergente(String mensaje, Color color) {
@@ -201,12 +275,16 @@ class _GuardarSimuladorDeAhorrosWidgetState
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          child: simuladoresGuardados.isEmpty
-              ? _buildEmptyState()
-              : _buildListaSimuladores(),
-        ),
+        child:
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  child:
+                      simuladoresGuardados.isEmpty
+                          ? _buildEmptyState()
+                          : _buildListaSimuladores(),
+                ),
       ),
     );
   }
@@ -217,8 +295,10 @@ class _GuardarSimuladorDeAhorrosWidgetState
       itemCount: simuladoresGuardados.length,
       separatorBuilder: (context, index) => const SizedBox(height: 20),
       itemBuilder: (context, index) {
-        final simulador = simuladoresGuardados[index];
-        final progreso = calcularProgreso(simulador).clamp(0.0, 1.0);
+        final simuladorConProgreso = simuladoresGuardados[index];
+        final simulador = simuladorConProgreso.simulador;
+        final progreso = simuladorConProgreso.progreso;
+
         final progressColor = _getProgressColor(progreso);
         final status = _getProgressStatus(progreso);
 
@@ -228,7 +308,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
             onTap: () => _verDatosSimulador(index),
-            onLongPress: () => _editarSimulador(index),
+            onLongPress: () => _editarSimulador(simulador),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
@@ -250,7 +330,11 @@ class _GuardarSimuladorDeAhorrosWidgetState
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.savings, size: 32, color: AppColors.primaryLight),
+                        Icon(
+                          Icons.savings,
+                          size: 32,
+                          color: AppColors.primaryLight,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -270,10 +354,26 @@ class _GuardarSimuladorDeAhorrosWidgetState
                     ),
                     const SizedBox(height: 16),
                     // Info Rows
-                    _buildInfoRow(Icons.savings_outlined, 'Monto a ahorrar:', 'Q${simulador.monto.toStringAsFixed(2)}'),
-                    _buildInfoRow(Icons.flag_outlined, 'Monto inicial:', 'Q${simulador.montoInicial.toStringAsFixed(2)}'),
-                    _buildInfoRow(Icons.date_range_outlined, 'Fecha inicio:', _formatDate(simulador.fechaInicio)),
-                    _buildInfoRow(Icons.event_outlined, 'Fecha fin:', _formatDate(simulador.fechaFin)),
+                    _buildInfoRow(
+                      Icons.savings_outlined,
+                      'Monto a ahorrar:',
+                      'Q${simulador.monto.toStringAsFixed(2)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.flag_outlined,
+                      'Monto inicial:',
+                      'Q${simulador.montoInicial.toStringAsFixed(2)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.date_range_outlined,
+                      'Fecha inicio:',
+                      _formatDate(simulador.fechaInicio),
+                    ),
+                    _buildInfoRow(
+                      Icons.event_outlined,
+                      'Fecha fin:',
+                      _formatDate(simulador.fechaFin),
+                    ),
                     const SizedBox(height: 18),
                     // Progreso animado y status
                     Column(
@@ -302,7 +402,9 @@ class _GuardarSimuladorDeAhorrosWidgetState
                               child: LinearProgressIndicator(
                                 value: value,
                                 backgroundColor: Colors.grey.shade200,
-                                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  progressColor,
+                                ),
                                 minHeight: 12,
                               ),
                             );
@@ -319,7 +421,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
                           icon: Icons.edit_outlined,
                           color: AppColors.warning,
                           tooltip: 'Editar',
-                          onPressed: () => _editarSimulador(index),
+                          onPressed: () => _editarSimulador(simulador),
                         ),
                         const SizedBox(width: 12),
                         _buildActionButton(
@@ -413,11 +515,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: 22,
-            color: color,
-          ),
+          child: Icon(icon, size: 22, color: color),
         ),
       ),
     );
@@ -470,10 +568,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(13),
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 28,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               elevation: 3,
             ),
             icon: const Icon(Icons.add_circle_outline),

@@ -1,27 +1,17 @@
-// Importaciones necesarias
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../data/models/simulador_ahorro.dart';
-import '../widgets/global_components.dart';
-import 'guardar_simulador_de_ahorros_page.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
-// Colores personalizados 
-class EditColors {
-  static const Color primary = Color(0xFF1976D2);
-  static const Color secondary = Color(0xFF42A5F5);
-  static const Color accent = Color(0xFF90CAF9);
-  static const Color background = Color(0xFFE3F2FD);
-  static const Color textDark = Color(0xFF0D47A1);
-  static const Color textLight = Colors.white;
-  static const Color error = Color(0xFFEF5350);
-  static const Color success = Color(0xFF66BB6A);
-  static const Color textField = Colors.white;
-  static const Color cardBackground = Color(0xFFE1F5FE);
-  static const Color dividerColor = Color(0xFFBBDEFB);
-}
+import '../../data/models/repositories/cuota_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
+import '../../data/models/simulador_ahorro.dart';
+import '../providers/user_provider.dart';
+import '../widgets/global_components.dart';
 
 class EditarSimuladorDeAhorrosPage extends StatefulWidget {
-  const EditarSimuladorDeAhorrosPage({super.key});
+  final SimuladorAhorro simulador;
+
+  const EditarSimuladorDeAhorrosPage({super.key, required this.simulador});
 
   @override
   State<EditarSimuladorDeAhorrosPage> createState() =>
@@ -30,423 +20,602 @@ class EditarSimuladorDeAhorrosPage extends StatefulWidget {
 
 class _EditarSimuladorDeAhorrosPageState
     extends State<EditarSimuladorDeAhorrosPage> {
+  @override
+  Widget build(BuildContext context) {
+    return GlobalLayout(
+      titulo: 'Editar Simulador de Ahorro',
+      body: EditarSimuladorDeAhorrosContent(simulador: widget.simulador),
+      mostrarDrawer: true,
+      mostrarBotonHome: true,
+      navIndex: 0,
+    );
+  }
+}
+
+class EditarSimuladorDeAhorrosContent extends StatefulWidget {
+  final SimuladorAhorro simulador;
+
+  const EditarSimuladorDeAhorrosContent({super.key, required this.simulador});
+
+  @override
+  State<EditarSimuladorDeAhorrosContent> createState() =>
+      _EditarSimuladorDeAhorrosContentState();
+}
+
+class _EditarSimuladorDeAhorrosContentState
+    extends State<EditarSimuladorDeAhorrosContent> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores de texto para los campos
-  late TextEditingController objetivoController;
-  late TextEditingController montoController;
-  late TextEditingController montoInicialController;
-  late TextEditingController plazoController;
+  late TextEditingController _objetivoController;
+  late TextEditingController _montoController;
+  late TextEditingController _plazoController;
 
-  // Variables de control de estado
-  String periodo = 'Seleccione una opción';
-  late int index;
-  double montoPeriodo = 0.0;
-  DateTime? fechaInicio;
-  DateTime? fechaFin;
-  bool _datosCargados = false;
-  bool _mostrarAyuda = false; // Controla la visibilidad del mensaje de ayuda
+  String _periodo = 'Seleccione una opción';
+  double _cuotaSugerida = 0.0;
+  bool _mostrarAyuda = false;
+
+  late DateTime _fechaInicio;
+  late DateTime _fechaFin;
+  late int? _simuladorId;
+  int? _userId;
+  late SimuladorAhorroRepository _repo;
+  final CuotaAhorroRepository _cuotaRepo = CuotaAhorroRepository();
+
+  bool _esAhorroCompletado = false;
+  double _totalYaAhorrado = 0.0;
+  int _totalPagos = 0;
+  int _cuotasRegistradas = 0;
+  int _pagosPendientes = 0;
 
   @override
   void initState() {
     super.initState();
-    objetivoController = TextEditingController();
-    montoController = TextEditingController();
-    montoInicialController = TextEditingController();
-    plazoController = TextEditingController();
+    _repo = SimuladorAhorroRepository();
+    _simuladorId = widget.simulador.id;
+    _objetivoController = TextEditingController(
+      text: widget.simulador.objetivo,
+    );
+    _montoController = TextEditingController(
+      text: widget.simulador.monto.toStringAsFixed(2),
+    );
+    _periodo = widget.simulador.periodo;
+    _fechaInicio = widget.simulador.fechaInicio;
+    _fechaFin = widget.simulador.fechaFin;
+
+    // Calcula los meses exactos para el plazo
+    final meses = calcularMeses(_fechaInicio, _fechaFin);
+    _plazoController = TextEditingController(text: meses.toString());
+  }
+
+  int calcularMeses(DateTime inicio, DateTime fin) {
+    int years = fin.year - inicio.year;
+    int months = fin.month - inicio.month;
+    int totalMonths = years * 12 + months;
+    if (fin.day < inicio.day) {
+      totalMonths--;
+    }
+    return totalMonths > 0 ? totalMonths : 1;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final userProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    _userId = userProvider.usuario?.id;
+    _cargarTotalYaAhorradoYCuotas();
+  }
 
-    // Solo carga los datos una vez
-    if (!_datosCargados) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map;
-      final SimuladorAhorro simulador = args['simulador'];
-      index = args['index'];
-
-      // Asignar datos a los controladores
-      objetivoController.text = simulador.objetivo;
-      montoController.text = simulador.monto.toString();
-      montoInicialController.text = simulador.montoInicial.toString();
-      fechaInicio = simulador.fechaInicio;
-      fechaFin = simulador.fechaFin;
-      periodo = simulador.periodo;
-
-      final duracionMeses =
-          (fechaFin!.difference(fechaInicio!).inDays / 30).round();
-      plazoController.text = duracionMeses.toString();
-
-      montoPeriodo = calcularMontoPorPeriodo();
-
-      _datosCargados = true;
+  Future<void> _cargarTotalYaAhorradoYCuotas() async {
+    if (_userId != null && _simuladorId != null) {
+      final total = await _cuotaRepo.getTotalAhorradoPorSimulador(
+        _simuladorId!,
+        _userId!,
+      );
+      final cuotasList = await _cuotaRepo.getCuotasPorSimuladorId(
+        _simuladorId!,
+        _userId!,
+      );
+      setState(() {
+        _totalYaAhorrado = total;
+        _cuotasRegistradas = cuotasList.length;
+        final montoObj =
+            double.tryParse(_montoController.text) ?? widget.simulador.monto;
+        _esAhorroCompletado = _totalYaAhorrado >= montoObj && montoObj > 0;
+        _actualizarCuotaSugerida();
+      });
     }
   }
 
-  // Calcula el monto a ahorrar por periodo (mensual o quincenal)
-  double calcularMontoPorPeriodo() {
-    final monto = double.tryParse(montoController.text) ?? 0;
-    final montoInicial = double.tryParse(montoInicialController.text) ?? 0;
-    final plazo = int.tryParse(plazoController.text) ?? 1;
-    final restante = (monto - montoInicial).clamp(0, double.infinity);
-
-    if (periodo == 'Quincenal') {
-      return restante / (plazo * 2);
-    } else if (periodo == 'Mensual') {
-      return restante / plazo;
-    } else {
-      return 0.0;
-    }
+  int _calcularTotalPagos() {
+    final plazo = int.tryParse(_plazoController.text) ?? 1;
+    if (_periodo == 'Quincenal') return plazo * 2;
+    if (_periodo == 'Mensual') return plazo;
+    return 1;
   }
 
-  // Actualiza el cálculo del monto por periodo
-  void actualizarMonto() {
+  void _actualizarCuotaSugerida() {
+    final monto = double.tryParse(_montoController.text) ?? 0;
+    final restante = (monto - _totalYaAhorrado).clamp(0, double.infinity);
+
+    _totalPagos = _calcularTotalPagos();
+    int pagosPendientes = (_totalPagos - _cuotasRegistradas);
+    if (pagosPendientes < 0) pagosPendientes = 0;
+    _pagosPendientes = pagosPendientes;
+
     setState(() {
-      montoPeriodo = calcularMontoPorPeriodo();
+      _cuotaSugerida = pagosPendientes > 0 ? restante / pagosPendientes : 0.0;
     });
   }
 
-  // Guarda los cambios en el simulador
-  void guardarCambios() {
-    final monto = double.tryParse(montoController.text) ?? 0;
-    final montoInicial = double.tryParse(montoInicialController.text) ?? 0;
-    final plazoMeses = int.tryParse(plazoController.text) ?? 0;
+  void _onAnyFieldChanged([String? _]) {
+    _actualizarCuotaSugerida();
+  }
 
-    // Validaciones básicas
-    if (objetivoController.text.isEmpty ||
+  void _limpiarCampos() {
+    setState(() {
+      _objetivoController.clear();
+      _montoController.clear();
+      _plazoController.clear();
+      _periodo = 'Seleccione una opción';
+      _cuotaSugerida = 0.0;
+      _pagosPendientes = 0;
+    });
+  }
+
+  Future<void> _guardarCambios() async {
+    if (!_formKey.currentState!.validate()) {
+      _mostrarAlertaCamposIncompletos();
+      return;
+    }
+    if (_userId == null) {
+      _mostrarAlertaCamposIncompletos();
+      return;
+    }
+    final monto = double.tryParse(_montoController.text) ?? 0;
+    final plazoMeses = int.tryParse(_plazoController.text) ?? 0;
+
+    if (_objetivoController.text.isEmpty ||
         monto <= 0 ||
         plazoMeses <= 0 ||
-        (periodo != 'Mensual' && periodo != 'Quincenal')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Por favor, complete todos los campos correctamente',
-          ),
-          backgroundColor: EditColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+        (_periodo != 'Mensual' && _periodo != 'Quincenal')) {
+      _mostrarAlertaCamposIncompletos();
       return;
     }
 
-    final now = DateTime.now();
+    final now = _fechaInicio;
     final nuevaFechaFin = DateTime(now.year, now.month + plazoMeses, now.day);
 
-    // Reemplaza el simulador editado en la lista global
-    simuladoresGuardados[index] = SimuladorAhorro(
-      objetivo: objetivoController.text,
+    final ahorroActualizado = widget.simulador.copyWith(
+      objetivo: _objetivoController.text,
       monto: monto,
-      montoInicial: montoInicial,
       fechaInicio: now,
       fechaFin: nuevaFechaFin,
-      periodo: periodo,
+      periodo: _periodo,
+      cuotaSugerida: _cuotaSugerida,
+    );
+
+    await _repo.updateSimuladorAhorro(ahorroActualizado, _userId!);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Cambios guardados correctamente'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
 
     Navigator.pop(context, true);
   }
 
+  void _mostrarAlertaCamposIncompletos() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Por favor, complete todos los campos correctamente',
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.red[400],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _objetivoController.dispose();
+    _montoController.dispose();
+    _plazoController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 600;
+    final isSmallScreen = screenWidth < 360;
 
-    return GlobalLayout(
-      titulo: 'Editar Simulador',
-      mostrarDrawer: true,
-      mostrarBotonHome: true,
-      navIndex: 0,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 20.0),
+    final bool camposHabilitados = !_esAhorroCompletado;
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Encabezado con imagen
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: EditColors.background,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: EditColors.primary, width: 2),
-                  ),
-                  child: Icon(
-                    Icons.savings,
-                    size: isSmallScreen ? 50 : 70,
-                    color: EditColors.primary,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Tarjeta de formulario
               Card(
-                elevation: 4,
+                elevation: 2,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                color: EditColors.cardBackground,
+                color: Colors.white,
                 child: Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Editar Plan de Ahorro',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: EditColors.textDark,
+                      _buildLabel('Objetivo de Ahorro'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _objetivoController,
+                        maxLength: 50,
+                        onChanged: _onAnyFieldChanged,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Por favor ingrese un objetivo';
+                          }
+                          if (value.length > 50) {
+                            return 'Máximo 50 caracteres';
+                          }
+                          return null;
+                        },
+                        enabled: true,
+                        buildCounter:
+                            (
+                              context, {
+                              required int currentLength,
+                              required bool isFocused,
+                              int? maxLength,
+                            }) => null, // Oculta el contador
+                        decoration: InputDecoration(
+                          hintText: 'Ej: Comprar laptop',
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // Campo: Objetivo del Ahorro
-                      _buildLabel('Objetivo del Ahorro'),
-                      _buildTextField(objetivoController, actualizarMonto),
+                      _buildLabel('Periodo de Ahorro'),
+                      const SizedBox(height: 8),
+                      _buildDropdown(camposHabilitados),
                       const SizedBox(height: 16),
-
-                      // Campo: Periodo a Ahorrar
-                      _buildLabel('Periodo a Ahorrar'),
-                      _buildDropdown(),
-                      const SizedBox(height: 16),
-
-                      // Campo: Plazo de Ahorro
                       _buildLabel('Plazo de Ahorro'),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 7,
-                            child: _buildTextField(
-                              plazoController,
-                              actualizarMonto,
-                              keyboardType: TextInputType.number,
-                              readOnlyContextMenu: true, // Bloquea copiar/pegar
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              children: [
-                                const Text(
-                                  'Meses',
-                                  style: TextStyle(
-                                    color: EditColors.textDark,
-                                    fontWeight: FontWeight.bold,
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: TextFormField(
+                                  controller: _plazoController,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 3,
+                                  onChanged: (_) => _onAnyFieldChanged(),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(3),
+                                  ],
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Ingrese el plazo';
+                                    }
+                                    int? plazo = int.tryParse(value);
+                                    if (plazo == null || plazo <= 0) {
+                                      return 'Plazo inválido';
+                                    }
+                                    if (plazo > 360) {
+                                      return 'Máx. 360 meses';
+                                    }
+                                    return null;
+                                  },
+                                  enabled: camposHabilitados,
+                                  buildCounter:
+                                      (
+                                        context, {
+                                        required int currentLength,
+                                        required bool isFocused,
+                                        int? maxLength,
+                                      }) => null, // Oculta contador
+                                  decoration: InputDecoration(
+                                    hintText: 'Ej: 12',
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                                Tooltip(
-                                  message:
-                                      'Cantidad de meses para completar el ahorro',
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _mostrarAyuda = true;
-                                      });
-                                      Future.delayed(
-                                        const Duration(seconds: 3),
-                                        () {
-                                          setState(() {
-                                            _mostrarAyuda = false;
-                                          });
-                                        },
-                                      );
-                                    },
-                                    child: const Icon(
-                                      Icons.help_outline,
-                                      size: 18,
-                                      color: Colors.grey,
+                              ),
+                              SizedBox(width: isSmallScreen ? 4 : 8),
+                              Container(
+                                constraints: BoxConstraints(
+                                  minWidth: isSmallScreen ? 70 : 80,
+                                ),
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Meses',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.help_outline,
+                                  color: Theme.of(context).primaryColor,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed:
+                                    !camposHabilitados
+                                        ? null
+                                        : () {
+                                          if (!mounted) return;
+                                          setState(() => _mostrarAyuda = true);
+                                          Future.delayed(
+                                            const Duration(seconds: 3),
+                                            () {
+                                              if (!mounted) return;
+                                              setState(
+                                                () => _mostrarAyuda = false,
+                                              );
+                                            },
+                                          );
+                                        },
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       if (_mostrarAyuda)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            'Ingrese la cantidad de meses para completar su ahorro',
+                            'Cantidad de meses para completar el ahorro (máx. 360)',
                             style: TextStyle(
-                              color: EditColors.primary,
-                              fontStyle: FontStyle.italic,
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
                             ),
                           ),
                         ),
-                      const SizedBox(height: 16),
-
-                      // Campo: Monto a Ahorrar
-                      _buildLabel('Monto a Ahorrar'),
-                      _buildTextField(
-                        montoController,
-                        actualizarMonto,
-                        keyboardType: TextInputType.number,
-                        readOnlyContextMenu: true,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Campo: Monto Inicial
-                      _buildLabel('Monto Inicial del Ahorro'),
-                      _buildTextField(
-                        montoInicialController,
-                        actualizarMonto,
-                        keyboardType: TextInputType.number,
-                        readOnlyContextMenu: true,
-                      ),
                     ],
                   ),
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // Tarjeta de resultado
+              const SizedBox(height: 16),
               Card(
-                elevation: 4,
+                elevation: 2,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                color: EditColors.primary,
+                color: Colors.white,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Resumen del Plan',
-                        style: TextStyle(
-                          color: EditColors.textLight,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Divider(color: EditColors.dividerColor, thickness: 1),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Fecha de inicio:',
-                            style: TextStyle(
-                              color: EditColors.textLight,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            fechaInicio != null
-                                ? '${fechaInicio!.day}/${fechaInicio!.month}/${fechaInicio!.year}'
-                                : 'No definida',
-                            style: TextStyle(
-                              color: EditColors.textLight,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildLabel('Monto Total a Ahorrar'),
                       const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Fecha estimada de fin:',
-                            style: TextStyle(
-                              color: EditColors.textLight,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            fechaFin != null
-                                ? '${fechaFin!.day}/${fechaFin!.month}/${fechaFin!.year}'
-                                : 'No definida',
-                            style: TextStyle(
-                              color: EditColors.textLight,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Divider(color: EditColors.dividerColor, thickness: 1),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: EditColors.accent.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(8),
+                      TextFormField(
+                        controller: _montoController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                periodo == 'Mensual'
-                                    ? 'Ahorro mensual:'
-                                    : periodo == 'Quincenal'
-                                    ? 'Ahorro quincenal:'
-                                    : 'Seleccione periodo',
-                                style: TextStyle(
-                                  color: EditColors.textLight,
+                        maxLength: 9,
+                        onChanged: (_) => _onAnyFieldChanged(),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d{0,2}'),
+                          ),
+                          LengthLimitingTextInputFormatter(9),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Ingrese el monto';
+                          }
+                          // Permite hasta 6 enteros y 2 decimales
+                          if (!RegExp(
+                            r'^\d{1,6}(\.\d{1,2})?$',
+                          ).hasMatch(value)) {
+                            return 'Máx. 6 enteros y 2 decimales';
+                          }
+                          double? monto = double.tryParse(value);
+                          if (monto == null || monto <= 0) {
+                            return 'Monto inválido';
+                          }
+                          return null;
+                        },
+                        enabled: camposHabilitados,
+                        buildCounter:
+                            (
+                              context, {
+                              required int currentLength,
+                              required bool isFocused,
+                              int? maxLength,
+                            }) => null,
+                        decoration: InputDecoration(prefixText: 'Q '),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLabel('Total ya ahorrado'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        readOnly: true,
+                        enabled: false,
+                        controller: TextEditingController(
+                          text: 'Q${_totalYaAhorrado.toStringAsFixed(2)}',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      if (_esAhorroCompletado)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10.0),
+                          child: Text(
+                            'Ahorro completado. Solo puede editar el objetivo.',
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // CARD VALOR ESTIMADO + PAGOS PENDIENTES
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColorDark,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.shade800.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'CUOTA ${_periodo == 'Quincenal' ? 'QUINCENAL' : 'MENSUAL'}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
                                 ),
                               ),
-                            ),
-                            Text(
-                              'Q${montoPeriodo.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: EditColors.textLight,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
+                              const SizedBox(height: 4),
+                              Text(
+                                _periodo == 'Seleccione una opción'
+                                    ? 'Seleccione periodo'
+                                    : 'Valor estimado',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
                               ),
+                            ],
+                          ),
+                        ),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            'Q${_cuotaSugerida.toStringAsFixed(2)}',
+                            key: ValueKey<double>(_cuotaSugerida),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // PAGOS PENDIENTES ABAJO DEL VALOR ESTIMADO
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.pending_actions_rounded,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Pagos pendientes: $_pagosPendientes',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _guardarCambios,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Botón de guardar
-              Center(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.save, size: 24),
-                  label: const Text('GUARDAR CAMBIOS'),
-                  onPressed: guardarCambios,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EditColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      child: const Text(
+                        'GUARDAR CAMBIOS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-
-              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -454,60 +623,20 @@ class _EditarSimuladorDeAhorrosPageState
     );
   }
 
-  // Método para construir etiquetas
   Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: EditColors.textDark,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).primaryColorDark,
+        fontSize: 14,
       ),
     );
   }
 
-  // Construcción de campos de texto con opción para bloquear el menú de copiar/pegar
-  Widget _buildTextField(
-    TextEditingController controller,
-    VoidCallback onChanged, {
-    TextInputType keyboardType = TextInputType.text,
-    bool readOnlyContextMenu = false,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      onChanged: (_) => onChanged(),
-      enableInteractiveSelection: !readOnlyContextMenu,
-      contextMenuBuilder:
-          readOnlyContextMenu
-              ? (context, editableTextState) => const SizedBox()
-              : null,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: EditColors.textField,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: EditColors.primary),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: EditColors.primary.withOpacity(0.5)),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
-    );
-  }
-
-  // Dropdown para seleccionar el periodo
-  Widget _buildDropdown() {
+  Widget _buildDropdown(bool enabled) {
     return DropdownButtonFormField<String>(
-      value: periodo,
+      value: _periodo,
       items: const [
         DropdownMenuItem(
           value: 'Seleccione una opción',
@@ -516,30 +645,44 @@ class _EditarSimuladorDeAhorrosPageState
         DropdownMenuItem(value: 'Mensual', child: Text('Mensual')),
         DropdownMenuItem(value: 'Quincenal', child: Text('Quincenal')),
       ],
-      onChanged: (value) {
-        setState(() {
-          periodo = value!;
-          actualizarMonto();
-        });
+      onChanged:
+          enabled
+              ? (value) {
+                setState(() {
+                  _periodo = value!;
+                  _actualizarCuotaSugerida();
+                });
+              }
+              : null,
+      validator: (value) {
+        if (value == null || value == 'Seleccione una opción') {
+          return 'Seleccione un periodo';
+        }
+        return null;
       },
       decoration: InputDecoration(
-        filled: true,
-        fillColor: EditColors.textField,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: EditColors.primary),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: EditColors.primary.withOpacity(0.5)),
-        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
+        filled: true,
+        fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
-      dropdownColor: EditColors.textField,
-      style: TextStyle(color: EditColors.textDark),
+      style: TextStyle(
+        color: enabled ? Colors.black87 : Colors.grey.shade700,
+        fontSize: 16,
+      ),
+      dropdownColor: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      icon: Icon(
+        Icons.arrow_drop_down_rounded,
+        color: Theme.of(context).primaryColor,
+      ),
+      isExpanded: true,
     );
   }
 }

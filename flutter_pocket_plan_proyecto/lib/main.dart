@@ -7,6 +7,7 @@ import 'presentation/pages/guardar_simulador_de_ahorros_page.dart';
 import 'presentation/pages/guardar_simulador_de_deudas_page.dart';
 import 'presentation/pages/history_cards_screen.dart';
 import 'presentation/pages/login_page.dart';
+import 'presentation/pages/recover_password_page.dart';
 import 'presentation/pages/register_credi_cart_screen.dart';
 import 'presentation/pages/register_debit_card_screen.dart';
 import 'presentation/pages/registros_ie_page.dart';
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
       routes: {
         // Rutas de Login
         '/login': (context) => const IniciarSesion(),
+           '/recover_password': (context) => RecoverPasswordPage(),
         '/micuenta': (context) => const MiCuentaPage(),
 
         // Rutas de tarjetas
@@ -49,7 +51,6 @@ class MyApp extends StatelessWidget {
         //Rutas de simulador de ahorros
         '/retos_de_ahorro': (context) => GuardarSimuladorDeAhorrosPage(),
         '/simulador_ahorro': (context) => SimuladorAhorrosScreen(),
-        '/editar_simulador': (context) => const EditarSimuladorDeAhorrosPage(),
         // Rutas de Presupuesto, ingreso de egresos e ingresos
         '/ingreso_egreso': (context) => RegistroMovimientoScreen(),
         '/resumen': (context) => ResumenScreen(),
