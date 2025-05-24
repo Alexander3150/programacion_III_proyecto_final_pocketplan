@@ -20,7 +20,7 @@ class HistoryCardsScreen extends StatelessWidget {
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacementNamed(context, '/resumen');
-        return false; // Bloquea el back por defecto
+        return false;
       },
       child: GlobalLayout(
         titulo: 'Mis Tarjetas',
@@ -131,231 +131,291 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
             ? const Color.fromARGB(179, 225, 245, 254)
             : const Color.fromARGB(221, 232, 245, 233);
 
-    return Stack(
-      children: [
-        Container(color: fondoColor),
-        GestureDetector(
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          behavior: HitTestBehavior.opaque,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 24),
-                child: Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors:
-                            tipoSeleccionado == 'Crédito'
-                                ? [
-                                  Colors.blue.shade100,
-                                  const Color.fromARGB(255, 22, 116, 192),
-                                ]
-                                : [
-                                  Colors.green.shade100,
-                                  const Color.fromARGB(255, 33, 148, 38),
-                                ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              tipoSeleccionado == 'Crédito'
-                                  ? Colors.blue.withOpacity(0.3)
-                                  : Colors.green.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: AnimatedSwitcher(
-                        duration: Duration(milliseconds: 500),
-                        child: Icon(
-                          tipoSeleccionado == 'Crédito'
-                              ? Icons.credit_card
-                              : Icons.account_balance_wallet,
-                          key: ValueKey<String>(tipoSeleccionado),
-                          color: Colors.white,
-                          size: 60,
-                        ),
-                      ),
-                    ),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double maxWidth =
+            constraints.maxWidth < 700 ? constraints.maxWidth : 500;
+        EdgeInsetsGeometry mainPadding =
+            constraints.maxWidth < 700
+                ? EdgeInsets.symmetric(horizontal: 10)
+                : const EdgeInsets.symmetric(horizontal: 70, vertical: 8);
+
+        // ========== Fix a alturas negativas ==========
+        double availableHeight = constraints.maxHeight;
+        double listMaxHeight = availableHeight - 300;
+        if (listMaxHeight < 120) listMaxHeight = 120;
+
+        return Container(
+          color: fondoColor,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: maxWidth,
+                  minHeight: constraints.maxHeight,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ToggleButtons(
-                    borderRadius: BorderRadius.circular(30),
-                    fillColor:
-                        tipoSeleccionado == 'Crédito'
-                            ? Colors.blue.withOpacity(0.15)
-                            : Colors.green.withOpacity(0.15),
-                    selectedColor:
-                        tipoSeleccionado == 'Crédito'
-                            ? Colors.blue[800]
-                            : Colors.green[800],
-                    color: Colors.grey[600],
-                    isSelected: [
-                      tipoSeleccionado == 'Crédito',
-                      tipoSeleccionado == 'Débito',
-                    ],
-                    onPressed: (index) {
-                      setState(() {
-                        tipoSeleccionado = index == 0 ? 'Crédito' : 'Débito';
-                      });
-                    },
+                child: Padding(
+                  padding: mainPadding,
+                  child: Column(
                     children: [
+                      // --- Icono central ---
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.credit_card, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Crédito',
-                              style: TextStyle(
-                                fontWeight:
+                        padding: const EdgeInsets.only(top: 16, bottom: 24),
+                        child: Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors:
                                     tipoSeleccionado == 'Crédito'
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
+                                        ? [
+                                          Colors.blue.shade100,
+                                          const Color.fromARGB(
+                                            255,
+                                            22,
+                                            116,
+                                            192,
+                                          ),
+                                        ]
+                                        : [
+                                          Colors.green.shade100,
+                                          const Color.fromARGB(
+                                            255,
+                                            33,
+                                            148,
+                                            38,
+                                          ),
+                                        ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      tipoSeleccionado == 'Crédito'
+                                          ? Colors.blue.withOpacity(0.3)
+                                          : Colors.green.withOpacity(0.3),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: AnimatedSwitcher(
+                                duration: Duration(milliseconds: 500),
+                                child: Icon(
+                                  tipoSeleccionado == 'Crédito'
+                                      ? Icons.credit_card
+                                      : Icons.account_balance_wallet,
+                                  key: ValueKey<String>(tipoSeleccionado),
+                                  color: Colors.white,
+                                  size: 60,
+                                ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
+                      // --- Toggle Buttons ---
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
-                          vertical: 12,
+                          vertical: 8,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.account_balance_wallet, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Débito',
-                              style: TextStyle(
-                                fontWeight:
-                                    tipoSeleccionado == 'Débito'
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                              ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.grey[200]!,
+                              width: 1.5,
                             ),
-                          ],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ToggleButtons(
+                            borderRadius: BorderRadius.circular(30),
+                            fillColor:
+                                tipoSeleccionado == 'Crédito'
+                                    ? Colors.blue.withOpacity(0.15)
+                                    : Colors.green.withOpacity(0.15),
+                            selectedColor:
+                                tipoSeleccionado == 'Crédito'
+                                    ? Colors.blue[800]
+                                    : Colors.green[800],
+                            color: Colors.grey[600],
+                            isSelected: [
+                              tipoSeleccionado == 'Crédito',
+                              tipoSeleccionado == 'Débito',
+                            ],
+                            onPressed: (index) {
+                              setState(() {
+                                tipoSeleccionado =
+                                    index == 0 ? 'Crédito' : 'Débito';
+                              });
+                            },
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.credit_card, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Crédito',
+                                      style: TextStyle(
+                                        fontWeight:
+                                            tipoSeleccionado == 'Crédito'
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.account_balance_wallet,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Débito',
+                                      style: TextStyle(
+                                        fontWeight:
+                                            tipoSeleccionado == 'Débito'
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // --- LISTADO ---
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: 120,
+                          maxHeight: listMaxHeight, // ¡Ya nunca negativo!
+                        ),
+                        child:
+                            _isLoading
+                                ? Center(child: CircularProgressIndicator())
+                                : AnimatedSwitcher(
+                                  duration: Duration(milliseconds: 300),
+                                  transitionBuilder: (
+                                    Widget child,
+                                    Animation<double> animation,
+                                  ) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: SizeTransition(
+                                        sizeFactor: animation,
+                                        axis: Axis.vertical,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child:
+                                      tipoSeleccionado == 'Crédito'
+                                          ? _buildCreditCardList(
+                                            _creditCards,
+                                            maxWidth,
+                                          )
+                                          : _buildDebitCardList(
+                                            _debitCards,
+                                            maxWidth,
+                                          ),
+                                ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                tipoSeleccionado == 'Crédito'
+                                    ? const Color.fromARGB(226, 25, 118, 210)
+                                    : const Color.fromARGB(218, 45, 153, 50),
+                            foregroundColor: Colors.white,
+                            elevation: 4,
+                            shadowColor:
+                                tipoSeleccionado == 'Crédito'
+                                    ? const Color.fromARGB(
+                                      160,
+                                      33,
+                                      149,
+                                      243,
+                                    ).withOpacity(0.3)
+                                    : const Color.fromARGB(
+                                      139,
+                                      76,
+                                      175,
+                                      79,
+                                    ).withOpacity(0.3),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) =>
+                                        tipoSeleccionado == 'Crédito'
+                                            ? const RegisterCreditCardScreen()
+                                            : const RegisterDebitCardScreen(),
+                              ),
+                            ).then((_) => _loadCards());
+                          },
+                          icon: Icon(Icons.add_circle_outline, size: 22),
+                          label: Text(
+                            'Agregar tarjeta de $tipoSeleccionado',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              Expanded(
-                child:
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : AnimatedSwitcher(
-                          duration: Duration(milliseconds: 300),
-                          transitionBuilder: (
-                            Widget child,
-                            Animation<double> animation,
-                          ) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SizeTransition(
-                                sizeFactor: animation,
-                                axis: Axis.vertical,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child:
-                              tipoSeleccionado == 'Crédito'
-                                  ? _buildCreditCardList(_creditCards)
-                                  : _buildDebitCardList(_debitCards),
-                        ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        tipoSeleccionado == 'Crédito'
-                            ? const Color.fromARGB(226, 25, 118, 210)
-                            : const Color.fromARGB(218, 45, 153, 50),
-                    foregroundColor: Colors.white,
-                    elevation: 4,
-                    shadowColor:
-                        tipoSeleccionado == 'Crédito'
-                            ? const Color.fromARGB(
-                              160,
-                              33,
-                              149,
-                              243,
-                            ).withOpacity(0.3)
-                            : const Color.fromARGB(
-                              139,
-                              76,
-                              175,
-                              79,
-                            ).withOpacity(0.3),
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) =>
-                                tipoSeleccionado == 'Crédito'
-                                    ? const RegisterCreditCardScreen()
-                                    : const RegisterDebitCardScreen(),
-                      ),
-                    ).then((_) => _loadCards());
-                  },
-                  icon: Icon(Icons.add_circle_outline, size: 22),
-                  label: Text(
-                    'Agregar tarjeta de $tipoSeleccionado',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildCreditCardList(List<CreditCard> tarjetas) {
+  Widget _buildCreditCardList(List<CreditCard> tarjetas, double maxWidth) {
     return tarjetas.isEmpty
         ? _buildEmptyState()
         : ListView.builder(
@@ -363,51 +423,65 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
           itemCount: tarjetas.length,
           itemBuilder: (context, index) {
             final tarjeta = tarjetas[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Card(
-                margin: EdgeInsets.zero,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _mostrarDetalles(context, tarjeta),
-                  child: Container(
-                    decoration: BoxDecoration(
+            return Center(
+              child: Container(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color.fromARGB(255, 211, 212, 212),
-                        width: 1.5,
-                      ),
                     ),
-                    child: ListTile(
-                      leading: Container(
-                        padding: EdgeInsets.all(10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _mostrarDetalles(context, tarjeta),
+                      child: Container(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.blue.shade50, Colors.blue.shade100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color.fromARGB(255, 211, 212, 212),
+                            width: 1.5,
                           ),
-                          shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.credit_card, color: Colors.blue[700]),
-                      ),
-                      title: Text(
-                        tarjeta.banco,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
+                        child: ListTile(
+                          leading: Container(
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade50,
+                                  Colors.blue.shade100,
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.credit_card,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                          title: Text(
+                            tarjeta.banco,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          subtitle: Text(
+                            tarjeta.alias,
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          trailing: _buildPopupMenu(tarjeta),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
-                      ),
-                      subtitle: Text(
-                        tarjeta.alias,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      trailing: _buildPopupMenu(tarjeta),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
                       ),
                     ),
                   ),
@@ -418,7 +492,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
         );
   }
 
-  Widget _buildDebitCardList(List<DebitCard> tarjetas) {
+  Widget _buildDebitCardList(List<DebitCard> tarjetas, double maxWidth) {
     return tarjetas.isEmpty
         ? _buildEmptyState()
         : ListView.builder(
@@ -426,57 +500,65 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
           itemCount: tarjetas.length,
           itemBuilder: (context, index) {
             final tarjeta = tarjetas[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Card(
-                margin: EdgeInsets.zero,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _mostrarDetalles(context, tarjeta),
-                  child: Container(
-                    decoration: BoxDecoration(
+            return Center(
+              child: Container(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color.fromARGB(255, 230, 228, 228),
-                        width: 1.5,
-                      ),
                     ),
-                    child: ListTile(
-                      leading: Container(
-                        padding: EdgeInsets.all(10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _mostrarDetalles(context, tarjeta),
+                      child: Container(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.green.shade50,
-                              Colors.green.shade100,
-                            ],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color.fromARGB(255, 230, 228, 228),
+                            width: 1.5,
                           ),
-                          shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.account_balance_wallet,
-                          color: Colors.green[700],
+                        child: ListTile(
+                          leading: Container(
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.green.shade50,
+                                  Colors.green.shade100,
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.account_balance_wallet,
+                              color: Colors.green[700],
+                            ),
+                          ),
+                          title: Text(
+                            tarjeta.banco,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          subtitle: Text(
+                            tarjeta.alias,
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          trailing: _buildPopupMenu(tarjeta),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
-                      ),
-                      title: Text(
-                        tarjeta.banco,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                      subtitle: Text(
-                        tarjeta.alias,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      trailing: _buildPopupMenu(tarjeta),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
                       ),
                     ),
                   ),
