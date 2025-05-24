@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_pocket_plan_proyecto/presentation/pages/resumen_page.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/models/user_model.dart';
+import '../../data/models/repositories/usuario_repository.dart';
 import '../providers/user_provider.dart';
 import 'create_user_page.dart';
-import 'delete_user_page.dart';
 import 'recover_password_page.dart';
+import 'resumen_page.dart';
 import 'transition_page.dart';
 
 /// Paleta de colores de la aplicación
@@ -57,6 +56,8 @@ class _IniciarSesionState extends State<IniciarSesion>
 
   // Estado para el efecto del botón de inicio de sesión
   bool _isButtonPressed = false;
+  // Variable para el usuario final para toda la app
+  final UsuarioRepository _usuarioRepository = UsuarioRepository();
 
   @override
   void initState() {
@@ -126,7 +127,7 @@ class _IniciarSesionState extends State<IniciarSesion>
         _userError = 'Por favor ingrese su usuario';
       } else if (_userController.text.length < 2) {
         _userError = 'El usuario debe tener al menos 2 caracteres';
-      } else if (_userController.text.length > 50) {
+      } else if (_userController.text.length > 40) {
         _userError = 'El usuario no puede exceder los 40 caracteres';
       } else {
         _userError = null;
@@ -150,26 +151,21 @@ class _IniciarSesionState extends State<IniciarSesion>
     }
   }
 
-  /// Verifica las credenciales del usuario contra los registros almacenados
-  void _loginUser() {
+  /// Verifica las credenciales del usuario contra la base de datos
+  Future<void> _loginUser() async {
     final username = _userController.text.trim();
     final password = _passController.text.trim();
-    print('Usuarios registrados actualmente:');
-    for (var user in UserModel.userList) {
-      print('Usuario: ${user.username}, Contraseña: ${user.password}');
-    }
-    final user = UserModel.authenticate(username, password);
 
-    if (user == null) {
+    // Buscar el usuario usando el repositorio y comparar contraseña
+    final user = await _usuarioRepository.getUsuarioByUsername(username);
+    if (user == null || user.password != password) {
       setState(() {
         _userError = null;
         _passError = 'Usuario o contraseña incorrectos';
       });
     } else {
       // Credenciales correctas - navegar a pantalla principal
-
       Provider.of<UsuarioProvider>(context, listen: false).setUsuario(user);
-
       _showSuccessAndNavigate();
     }
   }
@@ -185,8 +181,8 @@ class _IniciarSesionState extends State<IniciarSesion>
       ),
     );
 
-    // Aquí deberías navegar a la pantalla principal de tu app
-    // Ejemplo:
+    // Aquí deberías navegar a la pantalla principal del app
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -202,210 +198,216 @@ class _IniciarSesionState extends State<IniciarSesion>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isSmallScreen =
-        size.width < 600; // Adaptación para pantallas pequeñas
+    final isSmallScreen = size.width < 600;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 20 : size.width * 0.1,
-            vertical: 20,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              /// Título de la pantalla
-              Text(
-                'Iniciar Sesión',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 28 : 34,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                  letterSpacing: 1.2,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: isSmallScreen ? 20 : 40),
-
-              /// Icono de usuario con animación de escala y efectos visuales
-              ScaleTransition(
-                scale: _animation,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.secondary.withOpacity(0.2),
-                        AppColors.secondary.withOpacity(0.05),
-                      ],
-                      stops: const [0.1, 1.0],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withOpacity(0.2),
-                        blurRadius: 15,
-                        spreadRadius: 3,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/login');
+        return false; // Evita el pop normal
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 20 : size.width * 0.1,
+              vertical: 20,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                /// Título de la pantalla
+                Text(
+                  'Iniciar Sesión',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 28 : 34,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    letterSpacing: 1.2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.person,
-                    size: isSmallScreen ? 120 : 150,
-                    color: AppColors.secondary,
+                ),
+                SizedBox(height: isSmallScreen ? 20 : 40),
+
+                /// Icono de usuario con animación de escala y efectos visuales
+                ScaleTransition(
+                  scale: _animation,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.secondary.withOpacity(0.2),
+                          AppColors.secondary.withOpacity(0.05),
+                        ],
+                        stops: const [0.1, 1.0],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.accent.withOpacity(0.2),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.person,
+                      size: isSmallScreen ? 120 : 150,
+                      color: AppColors.secondary,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: isSmallScreen ? 30 : 50),
+                SizedBox(height: isSmallScreen ? 30 : 50),
 
-              /// Campo de texto para el usuario con validación
-              _buildTextField(
-                controller: _userController,
-                label: 'Usuario',
-                hintText: 'Ingrese su usuario ',
-                prefixIcon: Icons.person_outline,
-                focusNode: _userFocusNode,
-                borderColor: _userBorderColor,
-                errorText: _userError,
-                isSmallScreen: isSmallScreen,
-                minLength: 2,
-                maxLength: 40,
-              ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
+                /// Campo de texto para el usuario con validación
+                _buildTextField(
+                  controller: _userController,
+                  label: 'Usuario',
+                  hintText: 'Ingrese su usuario ',
+                  prefixIcon: Icons.person_outline,
+                  focusNode: _userFocusNode,
+                  borderColor: _userBorderColor,
+                  errorText: _userError,
+                  isSmallScreen: isSmallScreen,
+                  minLength: 2,
+                  maxLength: 40,
+                ),
+                SizedBox(height: isSmallScreen ? 20 : 30),
 
-              /// Campo de texto para la contraseña con toggle de visibilidad
-              _buildPasswordField(
-                controller: _passController,
-                label: 'Contraseña',
-                hintText: 'Ingrese su contraseña ',
-                focusNode: _passFocusNode,
-                borderColor: _passBorderColor,
-                errorText: _passError,
-                isSmallScreen: isSmallScreen,
-                obscureText: _obscureText,
-                minLength: 8,
-                maxLength: 20,
-                onToggleVisibility: () {
-                  setState(() {
-                    _obscureText = !_obscureText;
-                  });
-                },
-              ),
-              SizedBox(height: isSmallScreen ? 30 : 50),
+                /// Campo de texto para la contraseña con toggle de visibilidad
+                _buildPasswordField(
+                  controller: _passController,
+                  label: 'Contraseña',
+                  hintText: 'Ingrese su contraseña ',
+                  focusNode: _passFocusNode,
+                  borderColor: _passBorderColor,
+                  errorText: _passError,
+                  isSmallScreen: isSmallScreen,
+                  obscureText: _obscureText,
+                  minLength: 8,
+                  maxLength: 20,
+                  onToggleVisibility: () {
+                    setState(() {
+                      _obscureText = !_obscureText;
+                    });
+                  },
+                ),
+                SizedBox(height: isSmallScreen ? 30 : 50),
 
-              /// Botón de inicio de sesión con efecto
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTapDown: (_) => setState(() => _isButtonPressed = true),
-                  onTapUp: (_) => setState(() => _isButtonPressed = false),
-                  onTapCancel: () => setState(() => _isButtonPressed = false),
-                  onTap: _validateFields,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
-                    transform:
-                        Matrix4.identity()..translate(
-                          0.0,
-                          _isButtonPressed ? 2.0 : 0.0,
-                          _isButtonPressed ? -2.0 : 0.0,
+                /// Botón de inicio de sesión con efecto
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTapDown: (_) => setState(() => _isButtonPressed = true),
+                    onTapUp: (_) => setState(() => _isButtonPressed = false),
+                    onTapCancel: () => setState(() => _isButtonPressed = false),
+                    onTap: _validateFields,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 100),
+                      transform:
+                          Matrix4.identity()..translate(
+                            0.0,
+                            _isButtonPressed ? 2.0 : 0.0,
+                            _isButtonPressed ? -2.0 : 0.0,
+                          ),
+                      width:
+                          isSmallScreen ? size.width * 0.8 : size.width * 0.5,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.secondary, AppColors.accent],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                    width: isSmallScreen ? size.width * 0.8 : size.width * 0.5,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.secondary, AppColors.accent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                        boxShadow:
+                            _isButtonPressed
+                                ? [
+                                  BoxShadow(
+                                    color: AppColors.buttonShadow,
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                                : [
+                                  BoxShadow(
+                                    color: AppColors.buttonShadow,
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                       ),
-                      boxShadow:
-                          _isButtonPressed
-                              ? [
-                                BoxShadow(
-                                  color: AppColors.buttonShadow,
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                              : [
-                                BoxShadow(
-                                  color: AppColors.buttonShadow,
-                                  blurRadius: 12,
-                                  spreadRadius: 2,
-                                  offset: const Offset(0, 4),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: isSmallScreen ? 16 : 20,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Iniciar Sesión',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 18 : 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textLight,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 2,
+                                  offset: const Offset(1, 1),
                                 ),
                               ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: isSmallScreen ? 16 : 20,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 18 : 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textLight,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 2,
-                                offset: const Offset(1, 1),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: isSmallScreen ? 30 : 40),
+                SizedBox(height: isSmallScreen ? 30 : 40),
 
-              /// Botones secundarios en una sola fila
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Botón para crear nuevo usuario
-                  _buildTextButton(
-                    icon: Icons.person_add_alt_1,
-                    text: 'Crear Usuario',
-                    isSmallScreen: isSmallScreen,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CrearUsuarioScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(width: 5), // Espaciado entre botones
-                  // Botón para recuperar contraseña
-                  _buildTextButton(
-                    icon: Icons.lock_reset,
-                    text: 'Recuperar contraseña',
-                    isSmallScreen: isSmallScreen,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RecoverPasswordPage(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ],
+                /// Botones secundarios en una sola fila
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Botón para crear nuevo usuario
+                    _buildTextButton(
+                      icon: Icons.person_add_alt_1,
+                      text: 'Crear Usuario',
+                      isSmallScreen: isSmallScreen,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CrearUsuarioScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(width: 5), // Espaciado entre botones
+                    // Botón para recuperar contraseña
+                    _buildTextButton(
+                      icon: Icons.lock_reset,
+                      text: 'Recuperar contraseña',
+                      isSmallScreen: isSmallScreen,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RecoverPasswordPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -644,7 +646,7 @@ class _IniciarSesionState extends State<IniciarSesion>
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: Colors.transparent,

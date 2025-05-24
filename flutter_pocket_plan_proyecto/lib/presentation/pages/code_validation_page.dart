@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../data/models/user_model.dart';
-import 'login_page.dart';
+import '../../data/models/repositories/usuario_repository.dart';
+
 import 'new_password_page.dart';
 
-/// Paleta de colores modernizada con fondo claro
 class RecoveryColors {
-  static const Color background = Color(0xFFF5F5F5); // Fondo gris claro
-  static const Color primary = Color(0xFF4A8BDF); // Azul moderno
-  static const Color secondary = Color(0xFF6D9DB1); // Azul verdoso claro
-  static const Color accent = Color(0xFF94B8B5); // Verde azulado claro
-  static const Color textDark = Color(0xFF333333); // Texto oscuro
-  static const Color textLight = Colors.white; // Texto claro
-  static const Color error = Color(0xFFE57373); // Rojo suave para errores
-  static const Color success = Color(0xFF81C784); // Verde suave para éxito
-  static const Color textField = Colors.white; // Fondo de campos de texto
-  static const Color tooltipBackground = Color(
-    0xFF616161,
-  ); // Fondo para tooltips
+  static const Color background = Color(0xFFF5F5F5);
+  static const Color primary = Color(0xFF4A8BDF);
+  static const Color secondary = Color(0xFF6D9DB1);
+  static const Color accent = Color(0xFF94B8B5);
+  static const Color textDark = Color(0xFF333333);
+  static const Color textLight = Colors.white;
+  static const Color error = Color(0xFFE57373);
+  static const Color success = Color(0xFF81C784);
+  static const Color textField = Colors.white;
+  static const Color tooltipBackground = Color(0xFF616161);
 }
 
 class CodeValidationPage extends StatefulWidget {
@@ -35,29 +32,25 @@ class CodeValidationPage extends StatefulWidget {
   State<CodeValidationPage> createState() => _CodeValidationPageState();
 }
 
-/// Clase que maneja el estado de la página de validación de código
-/// Contiene la lógica para validar el código de verificación
 class _CodeValidationPageState extends State<CodeValidationPage> {
-  // Controlador para el campo de código
   final _codeController = TextEditingController();
 
-  // Variables para manejar errores de validación
   bool _showEmptyError = false;
   bool _showLengthError = false;
+  bool _isValidatePressed = false;
+  bool _isResendPressed = false;
+  bool _isProcessing = false;
+  bool _successShown = false; // Bandera para bloquear todo al éxito
 
-  // FocusNode para manejar el enfoque y efectos visuales
   final FocusNode _codeFocusNode = FocusNode();
   Color _codeBorderColor = Colors.grey.shade400;
 
-  // Variables para efectos 3D en botones
-  bool _isValidatePressed = false;
-  bool _isBackPressed = false;
+  final UsuarioRepository _usuarioRepository = UsuarioRepository();
 
   @override
   void initState() {
     super.initState();
 
-    // Listener para cambiar el color del borde al enfocar
     _codeFocusNode.addListener(() {
       setState(() {
         _codeBorderColor =
@@ -67,46 +60,61 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
       });
     });
 
-    // Listener para validación en tiempo real
     _codeController.addListener(_validateCodeLength);
   }
 
   @override
   void dispose() {
-    // Limpieza: libera recursos del controlador y focus node
     _codeController.removeListener(_validateCodeLength);
     _codeController.dispose();
     _codeFocusNode.dispose();
     super.dispose();
   }
 
-  /// Valida la longitud del código en tiempo real
   void _validateCodeLength() {
     if (!mounted) return;
-
     setState(() {
       _showLengthError =
           _codeController.text.isNotEmpty && _codeController.text.length < 6;
     });
   }
 
-  /// Valida el código ingresado por el usuario
-  void _validateCode() {
+  Future<void> _validateCode() async {
+    if (_isProcessing || _successShown) return;
     setState(() {
+      _isProcessing = true;
       _showEmptyError = _codeController.text.isEmpty;
       _showLengthError =
           _codeController.text.isNotEmpty && _codeController.text.length < 6;
     });
 
-    if (_showEmptyError || _showLengthError) return;
+    if (_showEmptyError || _showLengthError) {
+      setState(() => _isProcessing = false);
+      return;
+    }
 
     final code = _codeController.text.trim();
     final email = widget.email;
     final username = widget.username;
 
-    final isValid = UserModel.verifyRecoveryCode(email, username, code);
+    final user = await _usuarioRepository.getUsuarioByUsername(username);
+
+    bool isValid = false;
+    if (user != null &&
+        user.email.toLowerCase() == email.toLowerCase() &&
+        user.recoveryCode == code &&
+        user.codeExpiration != null) {
+      final expiration = DateTime.tryParse(user.codeExpiration!);
+
+      if (expiration != null && DateTime.now().isBefore(expiration)) {
+        isValid = true;
+      }
+    }
 
     if (isValid) {
+      setState(() {
+        _successShown = true; // Bloquea todo
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Código validado correctamente'),
@@ -120,7 +128,7 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
       );
 
       Future.delayed(const Duration(seconds: 1), () {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder:
@@ -130,6 +138,9 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
         );
       });
     } else {
+      setState(() {
+        _isProcessing = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Código incorrecto o expirado'),
@@ -146,112 +157,132 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Obtener dimensiones de la pantalla para diseño responsivo
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 400;
 
-    return Scaffold(
-      backgroundColor: RecoveryColors.background,
-      appBar: AppBar(
-        title: Text(
-          'Validación de código',
-          style: TextStyle(
-            color: RecoveryColors.textLight,
-            fontSize: isSmallScreen ? 22 : 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: RecoveryColors.primary,
-        elevation: 0,
-        iconTheme: IconThemeData(color: RecoveryColors.textLight),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [RecoveryColors.primary, RecoveryColors.secondary],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isProcessing || _successShown) {
+          // Bloquea el botón físico de atrás si está procesando o en éxito
+          return false;
+        } else {
+          Navigator.pushReplacementNamed(context, '/login');
+          return false;
+        }
+      },
+      child: AbsorbPointer(
+        absorbing:
+            _isProcessing ||
+            _successShown, // Bloquea toda la UI al procesar/exito
+        child: Scaffold(
+          backgroundColor: RecoveryColors.background,
+          appBar: AppBar(
+            title: Text(
+              'Validación de código',
+              style: TextStyle(
+                color: RecoveryColors.textLight,
+                fontSize: isSmallScreen ? 22 : 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+            centerTitle: true,
+            backgroundColor: RecoveryColors.primary,
+            elevation: 0,
+            iconTheme: IconThemeData(color: RecoveryColors.textLight),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [RecoveryColors.primary, RecoveryColors.secondary],
+                ),
+              ),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed:
+                  (_isProcessing || _successShown)
+                      ? null
+                      : () {
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+              tooltip: "Volver a inicio de sesión",
             ),
           ),
-        ),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 20 : size.width * 0.1,
-            vertical: isSmallScreen ? 20 : 30,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icono con efecto
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: RecoveryColors.accent.withOpacity(0.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: RecoveryColors.primary.withOpacity(0.2),
-                      blurRadius: 15,
-                      spreadRadius: 3,
+          body: GestureDetector(
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 20 : size.width * 0.1,
+                vertical: isSmallScreen ? 20 : 30,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Icono con efecto
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: RecoveryColors.accent.withOpacity(0.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: RecoveryColors.primary.withOpacity(0.2),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.lock_outline,
-                  color: RecoveryColors.primary,
-                  size: isSmallScreen ? 80 : 100,
-                ),
-              ),
-
-              SizedBox(height: isSmallScreen ? 30 : 50),
-
-              // Campo de código con tooltip mejorado
-              _buildCodeFieldWithTooltip(isSmallScreen),
-
-              SizedBox(height: isSmallScreen ? 40 : 60),
-
-              // Botón de validar con efecto 3D
-              _build3DButton(
-                onPressed: _validateCode,
-                label: 'VALIDAR CÓDIGO',
-                icon: Icons.verified,
-                isSmallScreen: isSmallScreen,
-                width: isSmallScreen ? size.width * 0.8 : size.width * 0.6,
-                isPressed: _isValidatePressed,
-                onTapDown: () => setState(() => _isValidatePressed = true),
-                onTapUp: () => setState(() => _isValidatePressed = false),
-              ),
-
-              SizedBox(height: isSmallScreen ? 30 : 40),
-
-              // Botón de volver con efecto 3D
-              _build3DTextButton(
-                onPressed:
-                    () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const IniciarSesion(),
-                      ),
+                    child: Icon(
+                      Icons.lock_outline,
+                      color: RecoveryColors.primary,
+                      size: isSmallScreen ? 80 : 100,
                     ),
-                label: 'VOLVER AL INICIO',
-                icon: Icons.arrow_back_rounded,
-                isSmallScreen: isSmallScreen,
-                isPressed: _isBackPressed,
-                onTapDown: () => setState(() => _isBackPressed = true),
-                onTapUp: () => setState(() => _isBackPressed = false),
+                  ),
+                  SizedBox(height: isSmallScreen ? 30 : 50),
+                  _buildCodeFieldWithTooltip(isSmallScreen),
+                  SizedBox(height: isSmallScreen ? 40 : 60),
+                  _build3DButton(
+                    onPressed:
+                        (_isProcessing || _successShown) ? null : _validateCode,
+                    label: 'VALIDAR CÓDIGO',
+                    icon: Icons.verified,
+                    isSmallScreen: isSmallScreen,
+                    width: isSmallScreen ? size.width * 0.8 : size.width * 0.6,
+                    isPressed: _isValidatePressed,
+                    onTapDown: () => setState(() => _isValidatePressed = true),
+                    onTapUp: () => setState(() => _isValidatePressed = false),
+                    disabled: _isProcessing || _successShown,
+                  ),
+                  SizedBox(height: isSmallScreen ? 30 : 40),
+                  _build3DTextButton(
+                    onPressed:
+                        (_isProcessing || _successShown)
+                            ? null
+                            : () {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/recover_password',
+                              );
+                            },
+                    label: 'REENVIAR CÓDIGO',
+                    icon: Icons.refresh_rounded,
+                    isSmallScreen: isSmallScreen,
+                    isPressed: _isResendPressed,
+                    onTapDown: () => setState(() => _isResendPressed = true),
+                    onTapUp: () => setState(() => _isResendPressed = false),
+                    disabled: _isProcessing || _successShown,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// Widget personalizado para el campo de código con tooltip
   Widget _buildCodeFieldWithTooltip(bool isSmallScreen) {
     final errorText =
         _showEmptyError
@@ -277,11 +308,9 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
               ),
             ),
             const SizedBox(width: 8),
-            // Tooltip mejorado usando el widget nativo de Flutter
             Tooltip(
               message:
-                  'Ingrese el código de verificación que se le envió a su correo electrónico. '
-                  'Es un código de 6 dígitos numéricos.',
+                  'Ingrese el código de verificación que se le envió a su correo electrónico. Es un código de 6 dígitos numéricos.',
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 81, 167, 186),
@@ -373,9 +402,8 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
     );
   }
 
-  /// Widget para botón con efecto 3D
   Widget _build3DButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required String label,
     required IconData icon,
     required bool isSmallScreen,
@@ -383,58 +411,66 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
     required bool isPressed,
     required VoidCallback onTapDown,
     required VoidCallback onTapUp,
+    bool disabled = false,
   }) {
     return SizedBox(
       width: width,
-      child: GestureDetector(
-        onTapDown: (_) => onTapDown(),
-        onTapUp: (_) => onTapUp(),
-        onTapCancel: onTapUp,
-        onTap: onPressed,
-        child: Transform(
-          transform: Matrix4.identity()..translate(0.0, isPressed ? 2.0 : 0.0),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              gradient: const LinearGradient(
-                colors: [RecoveryColors.primary, RecoveryColors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Opacity(
+        opacity: disabled ? 0.6 : 1.0,
+        child: GestureDetector(
+          onTapDown: disabled ? null : (_) => onTapDown(),
+          onTapUp: disabled ? null : (_) => onTapUp(),
+          onTapCancel: disabled ? null : onTapUp,
+          onTap: disabled ? null : onPressed,
+          child: Transform(
+            transform:
+                Matrix4.identity()
+                  ..translate(0.0, isPressed && !disabled ? 2.0 : 0.0),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: const LinearGradient(
+                  colors: [RecoveryColors.primary, RecoveryColors.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow:
+                    isPressed && !disabled
+                        ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            offset: const Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ]
+                        : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            offset: const Offset(0, 6),
+                            blurRadius: 8,
+                          ),
+                        ],
               ),
-              boxShadow:
-                  isPressed
-                      ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ]
-                      : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          offset: const Offset(0, 6),
-                          blurRadius: 8,
-                        ),
-                      ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 16 : 18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: Colors.white, size: 24),
-                  const SizedBox(width: 10),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen ? 16 : 18,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.white, size: 24),
+                    const SizedBox(width: 10),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isSmallScreen ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -443,62 +479,67 @@ class _CodeValidationPageState extends State<CodeValidationPage> {
     );
   }
 
-  /// Widget para botón de texto con efecto 3D
   Widget _build3DTextButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required String label,
     required IconData icon,
     required bool isSmallScreen,
     required bool isPressed,
     required VoidCallback onTapDown,
     required VoidCallback onTapUp,
+    bool disabled = false,
   }) {
-    return GestureDetector(
-      onTapDown: (_) => onTapDown(),
-      onTapUp: (_) => onTapUp(),
-      onTapCancel: onTapUp,
-      onTap: onPressed,
-      child: Transform(
-        transform: Matrix4.identity()..translate(0.0, isPressed ? 1.0 : 0.0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: RecoveryColors.background,
-            boxShadow:
-                isPressed
-                    ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        offset: const Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ]
-                    : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        offset: const Offset(0, 3),
-                        blurRadius: 4,
-                      ),
-                    ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: RecoveryColors.primary, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: RecoveryColors.primary,
-                  fontSize: isSmallScreen ? 14 : 16,
-                  fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.italic,
-                  decoration: TextDecoration.underline,
-                  letterSpacing: 1.1,
+    return Opacity(
+      opacity: disabled ? 0.6 : 1.0,
+      child: GestureDetector(
+        onTapDown: disabled ? null : (_) => onTapDown(),
+        onTapUp: disabled ? null : (_) => onTapUp(),
+        onTapCancel: disabled ? null : onTapUp,
+        onTap: disabled ? null : onPressed,
+        child: Transform(
+          transform:
+              Matrix4.identity()
+                ..translate(0.0, isPressed && !disabled ? 1.0 : 0.0),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: RecoveryColors.background,
+              boxShadow:
+                  isPressed && !disabled
+                      ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          offset: const Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ]
+                      : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          offset: const Offset(0, 3),
+                          blurRadius: 4,
+                        ),
+                      ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: RecoveryColors.primary, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: RecoveryColors.primary,
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                    fontStyle: FontStyle.italic,
+                    decoration: TextDecoration.underline,
+                    letterSpacing: 1.1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
