@@ -238,4 +238,44 @@ class DatabaseHelper {
       );
     }
   }
+
+  // ---------------------- CRUD POR MODELO ------------------------
+
+  // ----------- USUARIO --------------------
+  Future<int> insertUser(UserModel user) async {
+    final db = await database;
+    return await db.insert(userTable, user.toMap());
+  }
+
+  Future<UserModel?> getUserByUsername(String username) async {
+    final db = await database;
+    final maps = await db.query(
+      userTable,
+      where: 'username = ?',
+      whereArgs: [username],
+    );
+    if (maps.isNotEmpty) return UserModel.fromMap(maps.first);
+    return null;
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    final db = await database;
+    final maps = await db.query(userTable);
+    return maps.map((map) => UserModel.fromMap(map)).toList();
+  }
+
+  Future<int> updateUser(UserModel user) async {
+    final db = await database;
+    return await db.update(
+      userTable,
+      user.toMap(),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+  }
+
+  Future<int> deleteUser(int id) async {
+    final db = await database;
+    return await db.delete(userTable, where: 'id = ?', whereArgs: [id]);
+  }
 }
