@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
-import '../../core/database/bd_implementation.dart';
-import '../models/cuota_pago.dart';
-import '../models/simulador_deuda.dart';
+import '../../../core/database/bd_implementation.dart';
+import '../cuota_pago.dart';
+import '../simulador_deuda.dart';
 
 class SimuladorDeudaRepository {
   final dbHelper = DatabaseHelper();
