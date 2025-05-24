@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../data/models/card_manager.dart';
+import 'package:provider/provider.dart';
+import '../../data/models/credit_card_model.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+
+import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 import 'register_debit_card_screen.dart';
@@ -16,17 +20,30 @@ class CardColors {
   static const Color textLight = Colors.white;
 }
 
+//Provider user
+int getCurrentUserId(BuildContext context) {
+  final usuarioProvider = Provider.of<UsuarioProvider>(context, listen: false);
+  // El campo es "usuario", y el id es nullable, así que usa ?? 0 o lanza un error si no hay usuario
+  return usuarioProvider.usuario?.id ?? 0;
+}
+
 class RegisterCreditCardScreen extends StatelessWidget {
   const RegisterCreditCardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GlobalLayout(
-      titulo: 'Registrar Tarjeta de Crédito',
-      body: const _RegisterCreditCardContent(),
-      mostrarDrawer: true,
-      mostrarBotonHome: true,
-      navIndex: 0,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/resumen');
+        return false; // Evita el comportamiento por defecto
+      },
+      child: GlobalLayout(
+        titulo: 'Registrar Tarjeta de Crédito',
+        body: const _RegisterCreditCardContent(),
+        mostrarDrawer: true,
+        mostrarBotonHome: true,
+        navIndex: 0,
+      ),
     );
   }
 }
@@ -70,10 +87,13 @@ class _RegisterCreditCardContentState
   final FocusNode _fechaCorteFocusNode = FocusNode();
   final FocusNode _fechaPagoFocusNode = FocusNode();
 
+  late final TarjetaCreditoRepository _creditCardRepository;
+
   @override
   void initState() {
     super.initState();
     _setupFocusListeners();
+    _creditCardRepository = TarjetaCreditoRepository(); // Instancia aquí
   }
 
   void _setupFocusListeners() {
@@ -103,24 +123,17 @@ class _RegisterCreditCardContentState
       setState(() => _errorFechaExpiracion = 'Ingrese la fecha de expiración');
       return;
     }
-
-    // Validar formato MM/AA
     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
       setState(() => _errorFechaExpiracion = 'Formato inválido (MM/AA)');
       return;
     }
-
     final parts = value.split('/');
     final mes = int.tryParse(parts[0]) ?? 0;
     final anio = int.tryParse(parts[1]) ?? 0;
-
-    // Validar mes (1-12)
     if (mes < 1 || mes > 12) {
       setState(() => _errorFechaExpiracion = 'Mes inválido (1-12)');
       return;
     }
-
-    // Validar año (no menor al actual)
     final currentYear = DateTime.now().year % 100;
     if (anio < currentYear) {
       setState(
@@ -128,7 +141,6 @@ class _RegisterCreditCardContentState
       );
       return;
     }
-
     setState(() => _errorFechaExpiracion = null);
   }
 
@@ -141,10 +153,7 @@ class _RegisterCreditCardContentState
       }
       return;
     }
-
     final dia = int.tryParse(value) ?? 0;
-
-    // Validar día (1-31)
     if (dia < 1 || dia > 31) {
       if (campo == 'corte') {
         setState(() => _errorFechaCorte = 'Día inválido (1-31)');
@@ -153,7 +162,6 @@ class _RegisterCreditCardContentState
       }
       return;
     }
-
     if (campo == 'corte') {
       setState(() => _errorFechaCorte = null);
     } else {
@@ -163,31 +171,55 @@ class _RegisterCreditCardContentState
 
   void _validarCampos() {
     setState(() {
-      _errorBanco = _bancoController.text.isEmpty ? 'Ingrese el banco' : null;
-      _errorNumeroTarjeta =
-          _numeroTarjetaController.text.isEmpty ? 'Ingrese el número' : null;
-      _errorAlias =
-          _aliasController.text.isEmpty
-              ? 'Ingrese el nombre del titular'
-              : null;
+      // Banco: requerido y máximo 50 caracteres
+      if (_bancoController.text.isEmpty) {
+        _errorBanco = 'Ingrese el banco';
+      } else if (_bancoController.text.length > 50) {
+        _errorBanco = 'Máx. 50 caracteres';
+      } else {
+        _errorBanco = null;
+      }
+
+      // Número de tarjeta: requerido y exactamente 4 dígitos
+      if (_numeroTarjetaController.text.isEmpty) {
+        _errorNumeroTarjeta = 'Ingrese el número';
+      } else if (_numeroTarjetaController.text.length != 4) {
+        _errorNumeroTarjeta = 'Debe tener 4 dígitos';
+      } else {
+        _errorNumeroTarjeta = null;
+      }
+
+      // Nombre del titular: requerido y máximo 40 caracteres
+      if (_aliasController.text.isEmpty) {
+        _errorAlias = 'Ingrese el nombre del titular';
+      } else if (_aliasController.text.length > 40) {
+        _errorAlias = 'Máx. 40 caracteres';
+      } else {
+        _errorAlias = null;
+      }
+
+      // Límite: requerido (solo si tienes este campo)
       _errorLimite =
           _limiteController.text.isEmpty ? 'Ingrese el límite' : null;
 
+      // Fecha de expiración: requerido
       if (_fechaExpiracionController.text.isEmpty) {
         _errorFechaExpiracion = 'Ingrese la fecha de expiración';
       }
 
+      // Fecha de corte: requerido
       if (_fechaCorteController.text.isEmpty) {
         _errorFechaCorte = 'Ingrese el día de corte';
       }
 
+      // Fecha de pago: requerido
       if (_fechaPagoController.text.isEmpty) {
         _errorFechaPago = 'Ingrese el día de pago';
       }
     });
   }
 
-  void _guardarTarjeta() {
+  Future<void> _guardarTarjeta() async {
     _validarCampos();
 
     if (_errorBanco == null &&
@@ -197,36 +229,50 @@ class _RegisterCreditCardContentState
         _errorFechaExpiracion == null &&
         _errorFechaCorte == null &&
         _errorFechaPago == null) {
+      final userId = getCurrentUserId(context);
+
       final nuevaTarjeta = CreditCard(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: userId,
         banco: _bancoController.text,
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
         limite: double.tryParse(_limiteController.text) ?? 0.0,
+        saldo:
+            double.tryParse(_limiteController.text) ??
+            0.0, // saldo igual al límite inicial
         expiracion: _fechaExpiracionController.text,
         corte: _fechaCorteController.text,
         pago: _fechaPagoController.text,
       );
 
-      CardManager().addCreditCard(nuevaTarjeta);
+      final id = await _creditCardRepository.insertTarjetaCredito(nuevaTarjeta);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Tarjeta de crédito guardada con éxito'),
-          backgroundColor: CardColors.accent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      if (id > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Tarjeta de crédito guardada con éxito'),
+            backgroundColor: CardColors.accent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
+        );
 
-      _limpiarCampos(); // Opcional: limpia los campos tras guardar
-      // Navegar al historial
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
-      );
+        _limpiarCampos();
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar la tarjeta'),
+            backgroundColor: CardColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -293,7 +339,6 @@ class _RegisterCreditCardContentState
                 ),
               ),
               const SizedBox(height: 24),
-
               // Selector de tipo de tarjeta (navegación entre crédito/débito)
               Center(
                 child: Container(
@@ -352,7 +397,6 @@ class _RegisterCreditCardContentState
                 ),
               ),
               const SizedBox(height: 32),
-
               // Campos del formulario
               _buildTextFieldWithIcon(
                 controller: _bancoController,
@@ -362,9 +406,10 @@ class _RegisterCreditCardContentState
                 errorText: _errorBanco,
                 focusNode: _bancoFocusNode,
                 keyboardType: TextInputType.text,
+                maxLength: 50, // <-- Límite
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
-
               _buildTextFieldWithIcon(
                 controller: _numeroTarjetaController,
                 label: 'Número de tarjeta',
@@ -373,24 +418,27 @@ class _RegisterCreditCardContentState
                 errorText: _errorNumeroTarjeta,
                 focusNode: _numeroTarjetaFocusNode,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
+                maxLength: 4, // <-- Límite exacto
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4), // <-- Solo 4 dígitos
+                ],
                 helperText:
                     'Por temas de seguridad, solo ingrese los últimos 4 dígitos de su tarjeta. Esto ayuda a proteger sus datos.',
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 16),
-
               _buildTextFieldWithIcon(
                 controller: _aliasController,
-                label: 'Nombre del titular ',
+                label: 'Nombre del titular',
                 hint: 'Ej. Pocket Plan',
                 icon: Icons.label,
                 errorText: _errorAlias,
                 focusNode: _aliasFocusNode,
                 keyboardType: TextInputType.text,
+                maxLength: 40, // <-- Límite
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -404,7 +452,14 @@ class _RegisterCreditCardContentState
                       keyboardType: TextInputType.number,
                       helperText:
                           'Ingrese el monto límite que su banco ha asignado a esta tarjeta de crédito.',
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      maxLength:
+                          9, // Máximo 9 dígitos (puedes ajustar según tu necesidad)
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(
+                          9,
+                        ), // <-- Aplica el límite
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -412,7 +467,6 @@ class _RegisterCreditCardContentState
                 ],
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -441,7 +495,6 @@ class _RegisterCreditCardContentState
                 ],
               ),
               const SizedBox(height: 32),
-
               // Botón de guardar
               Center(
                 child: Column(
@@ -538,6 +591,14 @@ class _RegisterCreditCardContentState
             style: TextStyle(color: CardColors.textDark),
             maxLength: maxLength,
             inputFormatters: inputFormatters,
+            // ESTA LÍNEA OCULTA EL CONTADOR DE CARACTERES:
+            buildCounter:
+                (
+                  BuildContext context, {
+                  required int currentLength,
+                  required bool isFocused,
+                  int? maxLength,
+                }) => null,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -783,19 +844,13 @@ class _ExpirationDateFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     var newText = newValue.text;
-
     if (newText.length > 5) {
       return oldValue;
     }
-
-    // Eliminar todos los caracteres no numéricos
     newText = newText.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // Insertar la barra después de los primeros 2 dígitos
     if (newText.length >= 2) {
       newText = '${newText.substring(0, 2)}/${newText.substring(2)}';
     }
-
     return TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newText.length),

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../data/models/card_manager.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/models/debit_card_model.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
+
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 import 'register_credi_cart_screen.dart';
+import '../providers/user_provider.dart';
 
 class DebitCardColors {
-  // Paleta de colores verdosos para débito
   static const Color background = Color(0xFFF5FDF7);
   static const Color primary = Color(0xFF2E7D32);
   static const Color secondary = Color(0xFF4CAF50);
@@ -21,12 +25,18 @@ class RegisterDebitCardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlobalLayout(
-      titulo: 'Registrar Tarjeta de Débito',
-      body: const _RegisterDebitCardContent(),
-      mostrarDrawer: true,
-      mostrarBotonHome: true,
-      navIndex: 0,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/resumen');
+        return false; // Bloquea el pop normal y navega a resumen
+      },
+      child: GlobalLayout(
+        titulo: 'Registrar Tarjeta de Débito',
+        body: const _RegisterDebitCardContent(),
+        mostrarDrawer: true,
+        mostrarBotonHome: true,
+        navIndex: 0,
+      ),
     );
   }
 }
@@ -47,23 +57,25 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
   final TextEditingController _fechaExpiracionController =
       TextEditingController();
 
-  // Variables de estado y validación
   String tipoSeleccionado = 'Débito';
   String? _errorBanco;
   String? _errorNumeroTarjeta;
   String? _errorAlias;
   String? _errorFechaExpiracion;
 
-  // FocusNodes para manejar el enfoque
   final FocusNode _bancoFocusNode = FocusNode();
   final FocusNode _numeroTarjetaFocusNode = FocusNode();
   final FocusNode _aliasFocusNode = FocusNode();
   final FocusNode _fechaExpiracionFocusNode = FocusNode();
 
+  late final TarjetaDebitoRepository _debitCardRepository;
+  int? _userId;
+
   @override
   void initState() {
     super.initState();
     _setupFocusListeners();
+    _debitCardRepository = TarjetaDebitoRepository();
   }
 
   void _setupFocusListeners() {
@@ -71,6 +83,13 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     _numeroTarjetaFocusNode.addListener(() => setState(() {}));
     _aliasFocusNode.addListener(() => setState(() {}));
     _fechaExpiracionFocusNode.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    _userId = userProvider.usuario?.id;
   }
 
   @override
@@ -87,24 +106,18 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
       setState(() => _errorFechaExpiracion = 'Ingrese la fecha de expiración');
       return;
     }
-
-    // Validar formato MM/AA (2 dígitos para el año)
     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
       setState(() => _errorFechaExpiracion = 'Formato inválido (MM/AA)');
       return;
     }
-
     final parts = value.split('/');
     final mes = int.tryParse(parts[0]) ?? 0;
     final anio = int.tryParse(parts[1]) ?? 0;
 
-    // Validar mes (1-12)
     if (mes < 1 || mes > 12) {
       setState(() => _errorFechaExpiracion = 'Mes inválido (1-12)');
       return;
     }
-
-    // Validar año (no menor al actual - solo últimos 2 dígitos)
     final currentYear = DateTime.now().year % 100;
     if (anio < currentYear) {
       setState(
@@ -112,59 +125,93 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
       );
       return;
     }
-
     setState(() => _errorFechaExpiracion = null);
   }
 
   void _validarCampos() {
     setState(() {
-      _errorBanco = _bancoController.text.isEmpty ? 'Ingrese el banco' : null;
-      _errorNumeroTarjeta =
-          _numeroTarjetaController.text.isEmpty ? 'Ingrese el número' : null;
-      _errorAlias =
-          _aliasController.text.isEmpty
-              ? 'Ingrese el nombre del titular'
-              : null;
+      // Banco
+      if (_bancoController.text.isEmpty) {
+        _errorBanco = 'Ingrese el banco';
+      } else if (_bancoController.text.length > 50) {
+        _errorBanco = 'Máx. 50 caracteres';
+      } else {
+        _errorBanco = null;
+      }
 
+      // Número de tarjeta
+      if (_numeroTarjetaController.text.isEmpty) {
+        _errorNumeroTarjeta = 'Ingrese el número';
+      } else if (_numeroTarjetaController.text.length != 4) {
+        _errorNumeroTarjeta = 'Debe tener 4 dígitos';
+      } else {
+        _errorNumeroTarjeta = null;
+      }
+
+      // Alias
+      if (_aliasController.text.isEmpty) {
+        _errorAlias = 'Ingrese el nombre del titular';
+      } else if (_aliasController.text.length > 40) {
+        _errorAlias = 'Máx. 40 caracteres';
+      } else {
+        _errorAlias = null;
+      }
+
+      // Fecha de expiración
       if (_fechaExpiracionController.text.isEmpty) {
         _errorFechaExpiracion = 'Ingrese la fecha de expiración';
       }
     });
   }
 
-  void _guardarTarjeta() {
+  Future<void> _guardarTarjeta() async {
     _validarCampos();
 
     if (_errorBanco == null &&
         _errorNumeroTarjeta == null &&
         _errorAlias == null &&
         _errorFechaExpiracion == null) {
+      if (_userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se encontró el usuario actual'),
+            backgroundColor: DebitCardColors.error,
+          ),
+        );
+        return;
+      }
       final nuevaTarjeta = DebitCard(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: _userId!,
         banco: _bancoController.text,
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
         expiracion: _fechaExpiracionController.text,
       );
-
-      CardManager().addDebitCard(nuevaTarjeta);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Tarjeta de débito guardada con éxito'),
-          backgroundColor: DebitCardColors.secondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      final id = await _debitCardRepository.insertTarjetaDebito(nuevaTarjeta);
+      if (id > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Tarjeta de débito guardada con éxito'),
+            backgroundColor: DebitCardColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-
-      _limpiarCampos();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
-      );
+        );
+        _limpiarCampos();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar la tarjeta'),
+            backgroundColor: DebitCardColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -291,6 +338,9 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
                 errorText: _errorBanco,
                 focusNode: _bancoFocusNode,
                 keyboardType: TextInputType.text,
+                maxLength: 50,
+                helperText: null,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
 
@@ -306,7 +356,10 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
                 maxLength: 4,
                 helperText:
                     'Por temas de seguridad, solo ingrese los últimos 4 dígitos de su tarjeta. Esto ayuda a proteger sus datos.',
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -319,6 +372,9 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
                 errorText: _errorAlias,
                 focusNode: _aliasFocusNode,
                 keyboardType: TextInputType.text,
+                maxLength: 50,
+                helperText: null,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
 
@@ -465,6 +521,7 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: DebitCardColors.error, width: 2),
               ),
+              counterText: '',
             ),
             onChanged:
                 (_) => setState(() {
@@ -520,6 +577,7 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
               _ExpirationDateFormatter(),
+              LengthLimitingTextInputFormatter(5),
             ],
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
