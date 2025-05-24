@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/user_provider.dart'; // Importa provider
+import '../providers/user_provider.dart';
+import 'dialogo_filtro_informe.dart';
+import 'dialogo_filtro_informe_ahorros.dart';
+import 'dialogo_filtro_informe_deudas.dart';
+import '../pages/informe_page.dart';
+import '../pages/informe_ahorros_page.dart';
+import '../pages/informe_deudas_page.dart';
 
-// Widget personalizado que extiende StatelessWidget
 class GlobalLayout extends StatelessWidget {
-  final String titulo; // Título que se mostrará en el AppBar
-  final Widget body; // Cuerpo principal de la pantalla
-  final int
-  navIndex; // Índice del ítem seleccionado en la barra de navegación inferior
-  final Function(int)?
-  onTapNav; // Función opcional que se ejecuta cuando se toca un ítem del BottomNavigationBar
-  final bool mostrarBotonHome; // Indica si debe mostrarse el botón de inicio
-  final bool mostrarDrawer; // Indica si debe mostrarse el menú lateral
+  final String titulo;
+  final Widget body;
+  final int navIndex;
+  final Function(int)? onTapNav;
+  final bool mostrarBotonHome;
+  final bool mostrarDrawer;
+  final bool mostrarBotonInforme;
+  final String tipoInforme; // 'financiero', 'ahorro', 'deuda'
 
-  // Constructor del GlobalLayout con sus parámetros
   const GlobalLayout({
     required this.titulo,
     required this.body,
@@ -22,13 +26,14 @@ class GlobalLayout extends StatelessWidget {
     this.onTapNav,
     this.mostrarBotonHome = false,
     this.mostrarDrawer = false,
+    this.mostrarBotonInforme = false,
+    this.tipoInforme = 'financiero', // por defecto
     Key? key,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Usamos Provider para obtener el nombre del usuario
     final usuarioProvider = Provider.of<UsuarioProvider>(context);
     final nombreUsuario = usuarioProvider.usuario?.username ?? 'Invitado';
 
@@ -88,7 +93,6 @@ class GlobalLayout extends StatelessWidget {
     );
   }
 
-  // Drawer lateral con ítems de navegación
   Widget _buildDrawer(BuildContext context, String? nombreUsuario) {
     final theme = Theme.of(context);
 
@@ -234,19 +238,86 @@ class GlobalLayout extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: BottomNavigationBar(
           currentIndex: navIndex,
-          onTap:
-              onTapNav ??
-              (index) {
-                switch (index) {
-                  case 0:
-                    Navigator.pushNamed(context, '/resumen');
-                    break;
-                  case 1:
-                    break;
-                  case 2:
-                    break;
-                }
-              },
+          onTap: (index) async {
+            if (index == 2 && mostrarBotonInforme) {
+              Map<String, dynamic>? result;
+              Widget? nextPage;
+              String nextTitle = "Informe";
+
+              switch (tipoInforme) {
+                case 'ahorro':
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInformeAhorros(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe de Ahorros";
+                    nextPage = InformeAhorrosPage(
+                      estado: result['estado'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+                  break;
+                case 'deuda':
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInformeDeudas(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe de Deudas";
+                    nextPage = InformeDeudasPage(
+                      estado: result['estado'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+                  break;
+                default:
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInforme(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe Financiero";
+                    nextPage = InformePage(
+                      tipo: result['tipo'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+              }
+
+              if (nextPage != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => GlobalLayout(
+                          titulo: nextTitle,
+                          body: nextPage!,
+                          mostrarDrawer: true,
+                          navIndex: 2,
+                          mostrarBotonInforme: true,
+                          tipoInforme: tipoInforme,
+                        ),
+                  ),
+                );
+              }
+            } else if (onTapNav != null) {
+              onTapNav!(index);
+            } else {
+              switch (index) {
+                case 0:
+                  //Navigator.pushNamed(context, '/graficos');
+                  break;
+                case 1:
+                  break;
+                case 2:
+                  break;
+              }
+            }
+          },
           elevation: 8,
           type: BottomNavigationBarType.fixed,
           selectedItemColor: Color(0xFF00B0FF),
@@ -263,7 +334,7 @@ class GlobalLayout extends StatelessWidget {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.insert_chart),
-              label: 'Informe',
+              label: 'Generar Informe',
             ),
           ],
         ),
