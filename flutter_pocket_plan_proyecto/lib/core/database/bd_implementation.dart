@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 // Importa tus modelos aquí
 
 import '../../data/models/user_model.dart';
+import '../../data/models/credit_card_model.dart';
+import '../../data/models/debit_card_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -277,5 +279,75 @@ class DatabaseHelper {
   Future<int> deleteUser(int id) async {
     final db = await database;
     return await db.delete(userTable, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ------------------- CREDIT CARD -----------------
+  Future<int> insertCreditCard(CreditCard card) async {
+    final db = await database;
+    return await db.insert(creditCardTable, card.toMap());
+  }
+
+  Future<List<CreditCard>> getCreditCardsByUser(int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      creditCardTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return maps.map((map) => CreditCard.fromMap(map)).toList();
+  }
+
+  Future<int> updateCreditCard(CreditCard card) async {
+    final db = await database;
+    return await db.update(
+      creditCardTable,
+      card.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [card.id, card.userId],
+    );
+  }
+
+  Future<int> deleteCreditCard(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      creditCardTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  // ------------------- DEBIT CARD -----------------
+  Future<int> insertDebitCard(DebitCard card) async {
+    final db = await database;
+    return await db.insert(debitCardTable, card.toMap());
+  }
+
+  Future<List<DebitCard>> getDebitCardsByUser(int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      debitCardTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+    return maps.map((map) => DebitCard.fromMap(map)).toList();
+  }
+
+  Future<int> updateDebitCard(DebitCard card) async {
+    final db = await database;
+    return await db.update(
+      debitCardTable,
+      card.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [card.id, card.userId],
+    );
+  }
+
+  Future<int> deleteDebitCard(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      debitCardTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
   }
 }
