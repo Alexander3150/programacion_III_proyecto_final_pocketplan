@@ -7,6 +7,8 @@ import '../providers/user_provider.dart';
 import 'create_user_page.dart';
 import 'delete_user_page.dart';
 import 'recover_password_page.dart';
+import 'simulador_de_ahorros_page.dart';
+import 'simulador_de_deudas_page.dart';
 import 'transition_page.dart';
 
 /// Paleta de colores de la aplicación
@@ -192,7 +194,9 @@ class _IniciarSesionState extends State<IniciarSesion>
         builder:
             (context) => SplashScreen(
               destination:
-                  MiCuentaPage(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
+              //agregar la ruta a ejecutar despues de ingresar
+                  SimuladorDeudasScreen(),
+                  //SimuladorAhorrosScreen(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
             ),
       ),
     );
