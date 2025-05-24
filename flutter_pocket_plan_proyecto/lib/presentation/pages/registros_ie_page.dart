@@ -289,88 +289,100 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive width: para tablets, pc, horizontal
-        double maxWidth = constraints.maxWidth < 650 ? double.infinity : 480;
-        EdgeInsets outerPadding =
-            constraints.maxWidth < 650
-                ? EdgeInsets.zero
-                : const EdgeInsets.symmetric(horizontal: 70, vertical: 12);
+        // Responsive: limita el ancho en tablets/escritorio, pero permite todo el alto disponible
+        final bool isWide = constraints.maxWidth > 650;
+        final double maxWidth = isWide ? 480 : constraints.maxWidth;
+        final EdgeInsets outerPadding =
+            isWide
+                ? const EdgeInsets.symmetric(horizontal: 70, vertical: 12)
+                : const EdgeInsets.symmetric(horizontal: 10);
 
+        // ========== Nuevo: usa SingleChildScrollView general y limita el ancho ==========
         return Center(
-          child: Container(
-            width: maxWidth,
-            padding: outerPadding,
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                // Icono GRANDE según el tipo actual
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  child:
-                      _tabController.index == 0
-                          ? Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF13BDBD), Color(0xFF60B6F7)],
+          child: SingleChildScrollView(
+            child: Container(
+              width: maxWidth,
+              padding: outerPadding,
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  // Icono GRANDE según el tipo actual
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    child:
+                        _tabController.index == 0
+                            ? Container(
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF13BDBD),
+                                    Color(0xFF60B6F7),
+                                  ],
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(24),
+                              child: const Icon(
+                                Icons.trending_up,
+                                color: Colors.white,
+                                size: 48,
+                              ),
+                            )
+                            : Container(
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFB07C),
+                                    Color(0xFFF44336),
+                                  ],
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(24),
+                              child: const Icon(
+                                Icons.trending_down,
+                                color: Colors.white,
+                                size: 48,
                               ),
                             ),
-                            padding: const EdgeInsets.all(24),
-                            child: const Icon(
-                              Icons.trending_up,
-                              color: Colors.white,
-                              size: 48,
-                            ),
-                          )
-                          : Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFFFB07C), Color(0xFFF44336)],
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: const Icon(
-                              Icons.trending_down,
-                              color: Colors.white,
-                              size: 48,
-                            ),
-                          ),
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      color:
-                          _tabController.index == 0
-                              ? const Color(0xFF13BDBD)
-                              : const Color(0xFFF44336),
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.grey[600],
-                    tabs: const [Tab(text: 'INGRESO'), Tab(text: 'GASTO')],
-                    onTap: (index) => setState(() {}),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color:
+                            _tabController.index == 0
+                                ? const Color(0xFF13BDBD)
+                                : const Color(0xFFF44336),
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.grey[600],
+                      tabs: const [Tab(text: 'INGRESO'), Tab(text: 'GASTO')],
+                      onTap: (index) => setState(() {}),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildFormularioIngreso(context, maxWidth),
-                      _buildFormularioGasto(context, maxWidth),
-                    ],
+                  // ========== NUEVO: limita el alto máximo y permite scroll interno en formularios ==========
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.78,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildFormularioIngreso(context, maxWidth),
+                        _buildFormularioGasto(context, maxWidth),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

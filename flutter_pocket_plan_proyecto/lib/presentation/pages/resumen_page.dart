@@ -75,38 +75,65 @@ class _ResumenTabsState extends State<_ResumenTabs>
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Detecta si es pantalla ancha (tablet o landscape)
           final isWide = constraints.maxWidth > 800;
           final isTall = constraints.maxHeight > 800;
-          final padding = EdgeInsets.symmetric(
-            horizontal: isWide ? constraints.maxWidth * 0.13 : 0,
+
+          // ========== RESPONSIVE: define máximos ==========
+          final double maxWidth = isWide ? 700 : constraints.maxWidth;
+          final EdgeInsetsGeometry mainPadding =
+              isWide
+                  ? EdgeInsets.symmetric(
+                    horizontal: constraints.maxWidth * 0.13,
+                  )
+                  : EdgeInsets.symmetric(horizontal: 10);
+
+          double availableHeight = constraints.maxHeight;
+          // Reserva espacio para topBar, gráfica, botones
+          double listMaxHeight = availableHeight - 380;
+          if (listMaxHeight < 120) listMaxHeight = 120;
+
+          // Contenido principal de la columna
+          Widget contenido = Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              width: maxWidth,
+              padding: mainPadding,
+              child: Column(
+                children: [
+                  _buildBudgetDisplay(context, userProvider),
+                  _buildPeriodSelector(context),
+                  _buildTabBar(),
+                  // ========== Aquí aseguramos que la vista de Tab nunca desborde ==========
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: 120,
+                      maxHeight: listMaxHeight,
+                    ),
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildTab(context, 'ingreso'),
+                        _buildTab(context, 'egreso'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
 
-          Widget contenido = Column(
-            children: [
-              Padding(
-                padding: padding,
-                child: _buildBudgetDisplay(context, userProvider),
-              ),
-              Padding(padding: padding, child: _buildPeriodSelector(context)),
-              Padding(padding: padding, child: _buildTabBar()),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTab(context, 'ingreso'),
-                    _buildTab(context, 'egreso'),
-                  ],
-                ),
-              ),
-            ],
-          );
-
-          // Para tablets o modo horizontal, centra la columna y le da ancho máximo
+          // En tablets, centra el contenido y permite scroll general si falta espacio vertical
           if (isWide) {
-            return Center(child: Container(width: 700, child: contenido));
+            return Center(
+              child: SingleChildScrollView(
+                child: Container(width: 700, child: contenido),
+              ),
+            );
           }
-          return contenido;
+          // En móvil: permite scroll solo si es necesario (pantalla pequeña)
+          return SingleChildScrollView(
+            child: Container(width: maxWidth, child: contenido),
+          );
         },
       ),
     );
