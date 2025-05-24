@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../data/models/repositories/usuario_repository.dart';
 import '../../data/models/user_model.dart';
-import 'login_page.dart'; // Importamos la pantalla de inicio de sesión
 
 /// Paleta de colores verde moderno para la interfaz
 class AppColors {
@@ -19,7 +21,6 @@ class AppColors {
   static const Color link = Color(0xFF1E88E5); // Color para enlaces
 }
 
-/// Pantalla para creación de nuevos usuarios con validaciones mejoradas
 class CrearUsuarioScreen extends StatefulWidget {
   const CrearUsuarioScreen({super.key});
 
@@ -59,6 +60,12 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
   // Estado para el efecto 3D del botón
   bool _isButtonPressed = false;
 
+  // Estado para bloquear UI durante el proceso de creación
+  bool _isProcessing = false;
+
+  // Variable del repositorio para el usuario
+  final UsuarioRepository _usuarioRepository = UsuarioRepository();
+
   @override
   void initState() {
     super.initState();
@@ -66,7 +73,6 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     _setupTextListeners();
   }
 
-  /// Configura listeners para cambiar bordes al enfocar campos
   void _setupFocusListeners() {
     _emailFocusNode.addListener(() {
       setState(() {
@@ -99,7 +105,6 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     });
   }
 
-  /// Configura listeners para validación en tiempo real
   void _setupTextListeners() {
     _emailController.addListener(_validateEmailInRealTime);
     _userController.addListener(() {
@@ -110,9 +115,8 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     _confirmPassController.addListener(_validateConfirmPassInRealTime);
   }
 
-  /// Verifica si el nombre de usuario ya está en uso
-  void _checkUsernameInUse() {
-    final isAvailable = UserModel.isUsernameAvailable(
+  Future<void> _checkUsernameInUse() async {
+    final isAvailable = await _usuarioRepository.isUsernameAvailable(
       _userController.text.trim(),
     );
     if (!isAvailable) {
@@ -124,7 +128,6 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
 
   @override
   void dispose() {
-    // Limpieza de controladores y focus nodes
     _emailController.dispose();
     _userController.dispose();
     _passController.dispose();
@@ -136,18 +139,15 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     super.dispose();
   }
 
-  /// Valida formato de email con expresión regular
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
   }
 
-  /// Valida que el nombre de usuario cumpla con los requisitos (2-40 caracteres)
   bool _isValidUsername(String username) {
     return username.length >= 2 && username.length <= 40;
   }
 
-  /// Valida que la contraseña cumpla con los requisitos de seguridad
   bool _isValidPassword(String password) {
     if (password.length < 8 || password.length > 20) return false;
     final hasUpperCase = RegExp(r'[A-Z]').hasMatch(password);
@@ -156,7 +156,6 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     return hasUpperCase && hasLowerCase && hasNumbers;
   }
 
-  /// Validación en tiempo real para email
   void _validateEmailInRealTime() {
     if (_emailController.text.isEmpty) {
       setState(() => _emailError = null);
@@ -170,10 +169,13 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     });
   }
 
-  /// Validación en tiempo real para nombre de usuario
   void _validateUserInRealTime() {
     if (_userController.text.isEmpty) {
       setState(() => _userError = null);
+      return;
+    }
+    if (_userController.text.length > 40) {
+      setState(() => _userError = 'Máximo 40 caracteres');
       return;
     }
     setState(() {
@@ -184,21 +186,23 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     });
   }
 
-  /// Validación en tiempo real para contraseña
   void _validatePassInRealTime() {
     if (_passController.text.isEmpty) {
       setState(() => _passError = null);
       return;
     }
+    if (_passController.text.length > 20) {
+      setState(() => _passError = 'Máximo 20 caracteres');
+      return;
+    }
     setState(() {
       _passError =
           !_isValidPassword(_passController.text)
-              ? 'Mínimo 8 caracteres con mayúsculas, minúsculas y números'
+              ? 'Mínimo 8 y máximo 20 caracteres, con mayúsculas, minúsculas y números'
               : null;
     });
   }
 
-  /// Validación en tiempo real para confirmación de contraseña
   void _validateConfirmPassInRealTime() {
     if (_confirmPassController.text.isEmpty) {
       setState(() => _confirmPassError = null);
@@ -212,75 +216,102 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     });
   }
 
-  /// Valida todos los campos antes de crear el usuario
-  void _validateFields() {
+  Future<void> _validateFields() async {
+    if (_isProcessing) return;
+
+    String? emailError;
+    String? userError;
+    String? passError;
+    String? confirmPassError;
+
+    if (_emailController.text.isEmpty) {
+      emailError = 'Ingrese su correo electrónico';
+    } else if (!_isValidEmail(_emailController.text)) {
+      emailError = 'Ingrese un correo válido';
+    }
+
+    if (_userController.text.isEmpty) {
+      userError = 'Ingrese un nombre de usuario';
+    } else if (_userController.text.length > 40) {
+      userError = 'El nombre no debe tener más de 40 caracteres';
+    } else if (!_isValidUsername(_userController.text)) {
+      userError = 'Debe tener entre 2 y 40 caracteres';
+    }
+
+    if (_passController.text.isEmpty) {
+      passError = 'Ingrese una contraseña';
+    } else if (_passController.text.length > 20) {
+      passError = 'La contraseña no debe tener más de 20 caracteres';
+    } else if (!_isValidPassword(_passController.text)) {
+      passError =
+          'Mínimo 8 y máximo 20 caracteres, con mayúsculas, minúsculas y números';
+    }
+
+    if (_confirmPassController.text.isEmpty) {
+      confirmPassError = 'Confirme su contraseña';
+    } else if (_passController.text != _confirmPassController.text) {
+      confirmPassError = 'Las contraseñas no coinciden';
+    }
+
     setState(() {
-      // Validación de email
-      _emailError =
-          _emailController.text.isEmpty
-              ? 'Ingrese su correo electrónico'
-              : !_isValidEmail(_emailController.text)
-              ? 'Ingrese un correo válido'
-              : null;
-
-      // Validación de nombre de usuario
-      _userError =
-          _userController.text.isEmpty
-              ? 'Ingrese un nombre de usuario'
-              : !_isValidUsername(_userController.text)
-              ? 'Debe tener entre 2 y 40 caracteres'
-              : !UserModel.isUsernameAvailable(_userController.text.trim())
-              ? 'Nombre de usuario ya está en uso'
-              : null;
-
-      // Validación de contraseña
-      _passError =
-          _passController.text.isEmpty
-              ? 'Ingrese una contraseña'
-              : !_isValidPassword(_passController.text)
-              ? 'Mínimo 8 caracteres con mayúsculas, minúsculas y números'
-              : null;
-
-      // Validación de confirmación de contraseña
-      _confirmPassError =
-          _confirmPassController.text.isEmpty
-              ? 'Confirme su contraseña'
-              : _passController.text != _confirmPassController.text
-              ? 'Las contraseñas no coinciden'
-              : null;
+      _emailError = emailError;
+      _userError = userError;
+      _passError = passError;
+      _confirmPassError = confirmPassError;
     });
 
-    // Si no hay errores, proceder con creación de usuario
-    if (_emailError == null &&
-        _userError == null &&
-        _passError == null &&
-        _confirmPassError == null) {
-      _crearUsuario();
+    if (emailError != null ||
+        userError != null ||
+        passError != null ||
+        confirmPassError != null) {
+      return;
     }
+
+    final isAvailable = await _usuarioRepository.isUsernameAvailable(
+      _userController.text.trim(),
+    );
+    if (!isAvailable) {
+      setState(() {
+        _userError = 'Nombre de usuario ya está en uso';
+      });
+      return;
+    }
+
+    setState(() => _isProcessing = true); // Bloquea UI
+    await _crearUsuario();
+    setState(() => _isProcessing = false); // Desbloquea después
   }
 
-  /// Crea un nuevo usuario con los datos validados
-  void _crearUsuario() {
-    // Creamos el modelo de usuario con los datos ingresados
-    final newUser = UserModel.createNew(
+  Future<void> _crearUsuario() async {
+    final newUser = UserModel(
       email: _emailController.text.trim(),
       username: _userController.text.trim(),
       password: _passController.text,
     );
+    final id = await _usuarioRepository.insertUsuario(newUser);
 
-    // Mostramos mensaje de éxito
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Usuario creado exitosamente'),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-
-    // Regresamos a la pantalla anterior después de 2 segundos
-    Future.delayed(const Duration(seconds: 2), () => Navigator.pop(context));
+    if (id > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Usuario creado exitosamente'),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No se pudo crear el usuario'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -288,358 +319,398 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 400;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          'CREAR NUEVO USUARIO',
-          style: TextStyle(
-            color: AppColors.textLight,
-            fontSize: isSmallScreen ? 18 : 22,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        iconTheme: const IconThemeData(color: AppColors.textLight),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.secondary],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isProcessing) {
+          // Bloquea la navegación
+          return false;
+        } else {
+          // Navega a login y previene el pop por defecto
+          Navigator.pushReplacementNamed(context, '/login');
+          return false;
+        }
+      },
+      child: AbsorbPointer(
+        absorbing: _isProcessing,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Text(
+              'CREAR NUEVO USUARIO',
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: isSmallScreen ? 18 : 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 20 : size.width * 0.1,
-            vertical: isSmallScreen ? 20 : 30,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icono moderno de usuario
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.accent.withOpacity(0.3),
-                      AppColors.background.withOpacity(0.1),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
-                      blurRadius: 15,
-                      spreadRadius: 3,
-                    ),
-                  ],
+            centerTitle: true,
+            backgroundColor: AppColors.primary,
+            elevation: 4,
+            iconTheme: IconThemeData(
+              color: AppColors.textLight,
+              // Bloquea botón de retroceso de la AppBar (icono flecha) si procesando
+              opacity: _isProcessing ? 0.2 : 1,
+            ),
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed:
+                  _isProcessing
+                      ? null
+                      : () {
+                        Navigator.pop(context);
+                      },
+            ),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.secondary],
                 ),
-                child: Icon(
-                  Icons.person_add_alt_1,
-                  size: isSmallScreen ? 80 : 100,
-                  color: AppColors.primary,
-                ),
-              ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
-
-              // Campo de email con Tooltip
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Correo Electrónico',
-                        style: TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: isSmallScreen ? 16 : 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 5),
-                      Tooltip(
-                        message:
-                            'El correo electrónico asignado debe ser válido y funcional',
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        textStyle: TextStyle(
-                          color: AppColors.textLight,
-                          fontSize: isSmallScreen ? 12 : 14,
-                        ),
-                        triggerMode:
-                            TooltipTriggerMode.tap, // Se activa al tocar
-                        child: Icon(
-                          Icons.help_outline,
-                          size: isSmallScreen ? 18 : 20,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  _buildTextField(
-                    controller: _emailController,
-                    label: '',
-                    hintText: 'ejemplo@PocketPlan.com',
-                    icon: Icons.email_outlined,
-                    focusNode: _emailFocusNode,
-                    borderColor: _emailBorderColor,
-                    errorText: _emailError,
-                    keyboardType: TextInputType.emailAddress,
-                    isSmallScreen: isSmallScreen,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
-
-              // Campo de nombre de usuario con Tooltip
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Nombre de Usuario',
-                        style: TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: isSmallScreen ? 16 : 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 5),
-                      Tooltip(
-                        message:
-                            'Ingresa un nombre de usuario de 2 a 40 caracteres. Este nombre no podrá ser modificado después.',
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        textStyle: TextStyle(
-                          color: AppColors.textLight,
-                          fontSize: isSmallScreen ? 12 : 14,
-                        ),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Icon(
-                          Icons.help_outline,
-                          size: isSmallScreen ? 18 : 20,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  _buildTextField(
-                    controller: _userController,
-                    label: '',
-                    hintText: 'Ingrese su nombre de usuario',
-                    icon: Icons.person_outline,
-                    focusNode: _userFocusNode,
-                    borderColor: _userBorderColor,
-                    errorText: _userError,
-                    isSmallScreen: isSmallScreen,
-                  ),
-                ],
+            ),
+          ),
+          body: GestureDetector(
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 20 : size.width * 0.1,
+                vertical: isSmallScreen ? 20 : 30,
               ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
-
-              // Campo de contraseña con Tooltip
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Contraseña',
-                        style: TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: isSmallScreen ? 16 : 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 5),
-                      Tooltip(
-                        message:
-                            'La contraseña debe tener entre 8 y 20 caracteres, incluyendo al menos una mayúscula, una minúscula y un número.',
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        textStyle: TextStyle(
-                          color: AppColors.textLight,
-                          fontSize: isSmallScreen ? 12 : 14,
-                        ),
-                        triggerMode: TooltipTriggerMode.tap,
-                        child: Icon(
-                          Icons.help_outline,
-                          size: isSmallScreen ? 18 : 20,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  _buildPasswordField(
-                    controller: _passController,
-                    label: '',
-                    hintText: 'Ingrese su contraseña',
-                    focusNode: _passFocusNode,
-                    borderColor: _passBorderColor,
-                    errorText: _passError,
-                    obscureText: _obscurePass,
-                    onToggleVisibility: () {
-                      setState(() => _obscurePass = !_obscurePass);
-                    },
-                    isSmallScreen: isSmallScreen,
-                  ),
-                ],
-              ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
-
-              // Campo de confirmación de contraseña
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Confirmar Contraseña',
-                    style: TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  _buildPasswordField(
-                    controller: _confirmPassController,
-                    label: '',
-                    hintText: 'Repita su contraseña',
-                    focusNode: _confirmPassFocusNode,
-                    borderColor: _confirmPassBorderColor,
-                    errorText: _confirmPassError,
-                    obscureText: _obscureConfirmPass,
-                    onToggleVisibility: () {
-                      setState(
-                        () => _obscureConfirmPass = !_obscureConfirmPass,
-                      );
-                    },
-                    isSmallScreen: isSmallScreen,
-                  ),
-                ],
-              ),
-              SizedBox(height: isSmallScreen ? 30 : 50),
-
-              // Botón de crear usuario con efecto 3D
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _isButtonPressed = true),
-                onExit: (_) => setState(() => _isButtonPressed = false),
-                child: GestureDetector(
-                  onTapDown: (_) => setState(() => _isButtonPressed = true),
-                  onTapUp: (_) => setState(() => _isButtonPressed = false),
-                  onTapCancel: () => setState(() => _isButtonPressed = false),
-                  onTap: _validateFields,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
-                    transform:
-                        Matrix4.identity()..translate(
-                          0.0,
-                          _isButtonPressed ? 2.0 : 0.0,
-                          _isButtonPressed ? -2.0 : 0.0,
-                        ),
-                    width: isSmallScreen ? size.width * 0.8 : size.width * 0.5,
+                  // Icono moderno de usuario
+                  Container(
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.secondary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.accent.withOpacity(0.3),
+                          AppColors.background.withOpacity(0.1),
+                        ],
                       ),
-                      boxShadow:
-                          _isButtonPressed
-                              ? [
-                                BoxShadow(
-                                  color: AppColors.buttonShadow,
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                              : [
-                                BoxShadow(
-                                  color: AppColors.buttonShadow,
-                                  blurRadius: 12,
-                                  spreadRadius: 2,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.2),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: isSmallScreen ? 16 : 20,
+                    child: Icon(
+                      Icons.person_add_alt_1,
+                      size: isSmallScreen ? 80 : 100,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 30),
+
+                  // Campo de email con Tooltip
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Correo Electrónico',
+                            style: TextStyle(
+                              color: AppColors.textDark,
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          Tooltip(
+                            message:
+                                'El correo electrónico asignado debe ser válido y funcional',
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: isSmallScreen ? 12 : 14,
+                            ),
+                            triggerMode: TooltipTriggerMode.tap,
+                            child: Icon(
+                              Icons.help_outline,
+                              size: isSmallScreen ? 18 : 20,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Center(
-                        child: Text(
-                          'CREAR USUARIO',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textLight,
-                            letterSpacing: 1.1,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 2,
-                                offset: const Offset(1, 1),
+                      SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _emailController,
+                        label: '',
+                        hintText: 'ejemplo@PocketPlan.com',
+                        icon: Icons.email_outlined,
+                        focusNode: _emailFocusNode,
+                        borderColor: _emailBorderColor,
+                        errorText: _emailError,
+                        keyboardType: TextInputType.emailAddress,
+                        isSmallScreen: isSmallScreen,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 30),
+
+                  // Campo de nombre de usuario con Tooltip
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Nombre de Usuario',
+                            style: TextStyle(
+                              color: AppColors.textDark,
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          Tooltip(
+                            message:
+                                'Ingresa un nombre de usuario de 2 a 40 caracteres. Este nombre no podrá ser modificado después.',
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: isSmallScreen ? 12 : 14,
+                            ),
+                            triggerMode: TooltipTriggerMode.tap,
+                            child: Icon(
+                              Icons.help_outline,
+                              size: isSmallScreen ? 18 : 20,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _userController,
+                        label: '',
+                        hintText: 'Ingrese su nombre de usuario',
+                        icon: Icons.person_outline,
+                        focusNode: _userFocusNode,
+                        borderColor: _userBorderColor,
+                        errorText: _userError,
+                        isSmallScreen: isSmallScreen,
+                        maxLength: 40, // Límite físico
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 30),
+
+                  // Campo de contraseña con Tooltip
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Contraseña',
+                            style: TextStyle(
+                              color: AppColors.textDark,
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          Tooltip(
+                            message:
+                                'La contraseña debe tener entre 8 y 20 caracteres, incluyendo al menos una mayúscula, una minúscula y un número.',
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: TextStyle(
+                              color: AppColors.textLight,
+                              fontSize: isSmallScreen ? 12 : 14,
+                            ),
+                            triggerMode: TooltipTriggerMode.tap,
+                            child: Icon(
+                              Icons.help_outline,
+                              size: isSmallScreen ? 18 : 20,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      _buildPasswordField(
+                        controller: _passController,
+                        label: '',
+                        hintText: 'Ingrese su contraseña',
+                        focusNode: _passFocusNode,
+                        borderColor: _passBorderColor,
+                        errorText: _passError,
+                        obscureText: _obscurePass,
+                        onToggleVisibility: () {
+                          setState(() => _obscurePass = !_obscurePass);
+                        },
+                        isSmallScreen: isSmallScreen,
+                        maxLength: 20, // Límite físico
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 30),
+
+                  // Campo de confirmación de contraseña
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Confirmar Contraseña',
+                        style: TextStyle(
+                          color: AppColors.textDark,
+                          fontSize: isSmallScreen ? 16 : 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      _buildPasswordField(
+                        controller: _confirmPassController,
+                        label: '',
+                        hintText: 'Repita su contraseña',
+                        focusNode: _confirmPassFocusNode,
+                        borderColor: _confirmPassBorderColor,
+                        errorText: _confirmPassError,
+                        obscureText: _obscureConfirmPass,
+                        onToggleVisibility: () {
+                          setState(
+                            () => _obscureConfirmPass = !_obscureConfirmPass,
+                          );
+                        },
+                        isSmallScreen: isSmallScreen,
+                        maxLength: 20, // Límite físico
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 30 : 50),
+
+                  // Botón de crear usuario con efecto 3D
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    onEnter: (_) => setState(() => _isButtonPressed = true),
+                    onExit: (_) => setState(() => _isButtonPressed = false),
+                    child: GestureDetector(
+                      onTapDown: (_) => setState(() => _isButtonPressed = true),
+                      onTapUp: (_) => setState(() => _isButtonPressed = false),
+                      onTapCancel:
+                          () => setState(() => _isButtonPressed = false),
+                      onTap: _isProcessing ? null : _validateFields,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 100),
+                        transform:
+                            Matrix4.identity()..translate(
+                              0.0,
+                              _isButtonPressed ? 2.0 : 0.0,
+                              _isButtonPressed ? -2.0 : 0.0,
+                            ),
+                        width:
+                            isSmallScreen ? size.width * 0.8 : size.width * 0.5,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.secondary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow:
+                              _isButtonPressed
+                                  ? [
+                                    BoxShadow(
+                                      color: AppColors.buttonShadow,
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : [
+                                    BoxShadow(
+                                      color: AppColors.buttonShadow,
+                                      blurRadius: 12,
+                                      spreadRadius: 2,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                          color:
+                              _isProcessing
+                                  ? Colors.grey.withOpacity(0.4)
+                                  : null, // Bloquea visual si está procesando
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 16 : 20,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'CREAR USUARIO',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textLight.withOpacity(
+                                  _isProcessing ? 0.5 : 1,
+                                ), // Bloquea visual
+                                letterSpacing: 1.1,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 2,
+                                    offset: const Offset(1, 1),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              SizedBox(height: isSmallScreen ? 20 : 30),
+                  SizedBox(height: isSmallScreen ? 20 : 30),
 
-              // Enlace para ir a inicio de sesión
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const IniciarSesion(),
+                  // Enlace para ir a inicio de sesión
+                  TextButton(
+                    onPressed:
+                        _isProcessing
+                            ? null
+                            : () {
+                              Navigator.pushReplacementNamed(context, '/login');
+                            },
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color.fromARGB(255, 84, 148, 71),
                     ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color.fromARGB(255, 84, 148, 71),
-                ),
-                child: Text(
-                  '¿Ya tienes una cuenta? Inicia sesión',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
+                    child: Text(
+                      '¿Ya tienes una cuenta? Inicia sesión',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                        color:
+                            _isProcessing
+                                ? Colors.grey.withOpacity(0.4)
+                                : const Color.fromARGB(255, 84, 148, 71),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -657,6 +728,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     required String? errorText,
     required bool isSmallScreen,
     TextInputType keyboardType = TextInputType.text,
+    int? maxLength,
   }) {
     return Material(
       elevation: 2,
@@ -666,6 +738,11 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
         controller: controller,
         focusNode: focusNode,
         keyboardType: keyboardType,
+        maxLength: maxLength,
+        inputFormatters:
+            maxLength != null
+                ? [LengthLimitingTextInputFormatter(maxLength)]
+                : null,
         style: TextStyle(
           color: AppColors.textDark,
           fontSize: isSmallScreen ? 16 : 18,
@@ -728,6 +805,7 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
     required bool obscureText,
     required VoidCallback onToggleVisibility,
     required bool isSmallScreen,
+    int? maxLength,
   }) {
     return Material(
       elevation: 2,
@@ -737,6 +815,11 @@ class _CrearUsuarioScreenState extends State<CrearUsuarioScreen> {
         controller: controller,
         focusNode: focusNode,
         obscureText: obscureText,
+        maxLength: maxLength,
+        inputFormatters:
+            maxLength != null
+                ? [LengthLimitingTextInputFormatter(maxLength)]
+                : null,
         style: TextStyle(
           color: AppColors.textDark,
           fontSize: isSmallScreen ? 16 : 18,
