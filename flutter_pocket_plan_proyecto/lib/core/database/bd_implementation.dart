@@ -12,6 +12,7 @@ import '../../data/models/simulador_ahorro.dart';
 import '../../data/models/simulador_deuda.dart';
 import '../../data/models/cuota_ahorro.dart';
 import '../../data/models/cuota_pago.dart';
+import '../../data/models/movimiento_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -284,6 +285,43 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete(userTable, where: 'id = ?', whereArgs: [id]);
   }
+
+   // ----------- MOVIMIENTOS ----------------
+  Future<int> insertMovimiento(Movimiento movimiento) async {
+    final db = await database;
+    return await db.insert(movimientoTable, movimiento.toMap());
+  }
+
+  Future<List<Movimiento>> getMovimientosByUser(int userId) async {
+    final db = await database;
+    final maps = await db.query(
+      movimientoTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'fecha DESC',
+    );
+    return maps.map((map) => Movimiento.fromMap(map)).toList();
+  }
+
+  Future<int> updateMovimiento(Movimiento movimiento) async {
+    final db = await database;
+    return await db.update(
+      movimientoTable,
+      movimiento.toMap(),
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [movimiento.id, movimiento.userId],
+    );
+  }
+
+  Future<int> deleteMovimiento(int id, int userId) async {
+    final db = await database;
+    return await db.delete(
+      movimientoTable,
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
 
   // ------------------- CREDIT CARD -----------------
   Future<int> insertCreditCard(CreditCard card) async {
