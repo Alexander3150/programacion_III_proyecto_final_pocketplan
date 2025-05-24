@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../data/models/card_manager.dart';
+import 'package:provider/provider.dart';
+import '../../data/models/credit_card_model.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 
+// ------------ FUNCIÓN UTILIDAD PARA OBTENER ID DE USUARIO ACTUAL -------------
+int getCurrentUserId(BuildContext context) {
+  final usuarioProvider = Provider.of<UsuarioProvider>(context, listen: false);
+  return usuarioProvider.usuario?.id ?? 0;
+}
+
+// ---------------------------------------------------------------------------
 class CardColors {
   // Paleta de colores azulados para crédito
   static const Color background = Color(0xFFF5F9FD);
@@ -64,7 +74,6 @@ class _ModificacionDetalleTarjetaCreditoContentState
   late TextEditingController _fechaCorteController;
   late TextEditingController _fechaPagoController;
 
-  // Variables de estado y validación
   String? _errorBanco;
   String? _errorNumeroTarjeta;
   String? _errorAlias;
@@ -73,10 +82,12 @@ class _ModificacionDetalleTarjetaCreditoContentState
   String? _errorFechaCorte;
   String? _errorFechaPago;
 
+  late final TarjetaCreditoRepository _creditoRepository;
+  double saldoActual = 0;
+
   @override
   void initState() {
     super.initState();
-    // Inicializar controladores con los datos de la tarjeta
     _bancoController = TextEditingController(text: widget.tarjeta.banco);
     _numeroTarjetaController = TextEditingController(
       text: widget.tarjeta.numero,
@@ -90,6 +101,24 @@ class _ModificacionDetalleTarjetaCreditoContentState
     );
     _fechaCorteController = TextEditingController(text: widget.tarjeta.corte);
     _fechaPagoController = TextEditingController(text: widget.tarjeta.pago);
+
+    _creditoRepository = TarjetaCreditoRepository();
+    saldoActual = widget.tarjeta.saldo;
+    _actualizarDatosDeTarjeta();
+  }
+
+  // Cargar la tarjeta desde BD para tener el saldo actualizado en todo momento
+  Future<void> _actualizarDatosDeTarjeta() async {
+    final userId = getCurrentUserId(context);
+    final tarjetaActualizada = await _creditoRepository.getTarjetaCreditoById(
+      widget.tarjeta.id!,
+      userId,
+    );
+    if (tarjetaActualizada != null) {
+      setState(() {
+        saldoActual = tarjetaActualizada.saldo;
+      });
+    }
   }
 
   @override
@@ -109,24 +138,17 @@ class _ModificacionDetalleTarjetaCreditoContentState
       setState(() => _errorFechaExpiracion = 'Ingrese la fecha de expiración');
       return;
     }
-
-    // Validar formato MM/AA
     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
       setState(() => _errorFechaExpiracion = 'Formato inválido (MM/AA)');
       return;
     }
-
     final parts = value.split('/');
     final mes = int.tryParse(parts[0]) ?? 0;
     final anio = int.tryParse(parts[1]) ?? 0;
-
-    // Validar mes (1-12)
     if (mes < 1 || mes > 12) {
       setState(() => _errorFechaExpiracion = 'Mes inválido (1-12)');
       return;
     }
-
-    // Validar año (no menor al actual)
     final currentYear = DateTime.now().year % 100;
     if (anio < currentYear) {
       setState(
@@ -134,7 +156,6 @@ class _ModificacionDetalleTarjetaCreditoContentState
       );
       return;
     }
-
     setState(() => _errorFechaExpiracion = null);
   }
 
@@ -147,10 +168,7 @@ class _ModificacionDetalleTarjetaCreditoContentState
       }
       return;
     }
-
     final dia = int.tryParse(value) ?? 0;
-
-    // Validar día (1-31)
     if (dia < 1 || dia > 31) {
       if (campo == 'corte') {
         setState(() => _errorFechaCorte = 'Día inválido (1-31)');
@@ -159,7 +177,6 @@ class _ModificacionDetalleTarjetaCreditoContentState
       }
       return;
     }
-
     if (campo == 'corte') {
       setState(() => _errorFechaCorte = null);
     } else {
@@ -169,34 +186,60 @@ class _ModificacionDetalleTarjetaCreditoContentState
 
   void _validarCampos() {
     setState(() {
-      _errorBanco = _bancoController.text.isEmpty ? 'Ingrese el banco' : null;
-      _errorNumeroTarjeta =
-          _numeroTarjetaController.text.isEmpty ? 'Ingrese el número' : null;
-      _errorAlias =
-          _aliasController.text.isEmpty
-              ? 'Ingrese el nombre del titular'
-              : null;
+      // Banco: requerido y máximo 50 caracteres
+      if (_bancoController.text.isEmpty) {
+        _errorBanco = 'Ingrese el banco';
+      } else if (_bancoController.text.length > 50) {
+        _errorBanco = 'Máx. 50 caracteres';
+      } else {
+        _errorBanco = null;
+      }
+
+      // Número de tarjeta: requerido y exactamente 4 dígitos
+      if (_numeroTarjetaController.text.isEmpty) {
+        _errorNumeroTarjeta = 'Ingrese el número';
+      } else if (_numeroTarjetaController.text.length != 4) {
+        _errorNumeroTarjeta = 'Debe tener 4 dígitos';
+      } else {
+        _errorNumeroTarjeta = null;
+      }
+
+      // Nombre del titular: requerido y máximo 50 caracteres
+      if (_aliasController.text.isEmpty) {
+        _errorAlias = 'Ingrese el nombre del titular';
+      } else if (_aliasController.text.length > 50) {
+        _errorAlias = 'Máx. 50 caracteres';
+      } else {
+        _errorAlias = null;
+      }
+
+      // Límite: requerido
       _errorLimite =
           _limiteController.text.isEmpty ? 'Ingrese el límite' : null;
 
+      // Fecha de expiración: requerido y formato
       if (_fechaExpiracionController.text.isEmpty) {
         _errorFechaExpiracion = 'Ingrese la fecha de expiración';
+      } else {
+        _validarFechaExpiracion(_fechaExpiracionController.text);
       }
 
-      if (_fechaCorteController.text.isEmpty) {
-        _errorFechaCorte = 'Ingrese el día de corte';
-      }
+      // Día de corte: requerido
+      _errorFechaCorte =
+          _fechaCorteController.text.isEmpty ? 'Ingrese el día de corte' : null;
 
-      if (_fechaPagoController.text.isEmpty) {
-        _errorFechaPago = 'Ingrese el día de pago';
-      }
+      // Día de pago: requerido
+      _errorFechaPago =
+          _fechaPagoController.text.isEmpty ? 'Ingrese el día de pago' : null;
     });
   }
 
-  void _actualizarTarjeta() {
+  /// ACTUALIZA la tarjeta en la base de datos y también el saldo si el límite fue cambiado
+  Future<void> _actualizarTarjeta() async {
     if (!widget.modoEdicion) return;
-
     _validarCampos();
+
+    final userId = getCurrentUserId(context);
 
     if (_errorBanco == null &&
         _errorNumeroTarjeta == null &&
@@ -205,34 +248,72 @@ class _ModificacionDetalleTarjetaCreditoContentState
         _errorFechaExpiracion == null &&
         _errorFechaCorte == null &&
         _errorFechaPago == null) {
+      final nuevoLimite = double.tryParse(_limiteController.text) ?? 0.0;
+      final limiteAnterior = widget.tarjeta.limite;
+      double nuevoSaldo = saldoActual;
+
+      // Lógica robusta para manejar límite en 0
+      if (limiteAnterior == 0 && nuevoLimite > 0) {
+        // Si el límite anterior era 0 y se sube, solo suma la diferencia hasta máximo el nuevo límite
+        // Pero si hubo gastos, el saldo debería ser: limiteNuevo - (limiteAnterior - saldoActual)
+        // Pero como limiteAnterior es 0, saldoActual es 0, así que saldo debe ser igual a la diferencia (nuevoLimite)
+        nuevoSaldo = nuevoLimite;
+      } else if (nuevoLimite == 0) {
+        // Si el límite nuevo es 0, el saldo debería ser 0
+        nuevoSaldo = 0;
+      } else if (nuevoLimite != limiteAnterior) {
+        // Si hay un cambio normal
+        final diferencia = nuevoLimite - limiteAnterior;
+        nuevoSaldo += diferencia;
+
+        // Reglas para no pasarse ni quedarse negativo
+        if (nuevoSaldo > nuevoLimite) nuevoSaldo = nuevoLimite;
+        if (nuevoSaldo < 0) nuevoSaldo = 0;
+      }
+
       final tarjetaActualizada = CreditCard(
         id: widget.tarjeta.id,
+        userId: userId,
         banco: _bancoController.text,
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
-        limite: double.tryParse(_limiteController.text) ?? 0.0,
+        limite: nuevoLimite,
+        saldo: nuevoSaldo,
         expiracion: _fechaExpiracionController.text,
         corte: _fechaCorteController.text,
         pago: _fechaPagoController.text,
       );
 
-      CardManager().updateCreditCard(widget.tarjeta.id, tarjetaActualizada);
+      final result = await _creditoRepository.updateTarjetaCredito(
+        tarjetaActualizada,
+      );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Tarjeta actualizada con éxito'),
-          backgroundColor: CardColors.accent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      if (result > 0) {
+        setState(() {
+          saldoActual = nuevoSaldo;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Tarjeta actualizada con éxito'),
+            backgroundColor: CardColors.accent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
-      );
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HistoryCardsScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo actualizar la tarjeta'),
+            backgroundColor: CardColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -272,7 +353,7 @@ class _ModificacionDetalleTarjetaCreditoContentState
               ),
               const SizedBox(height: 24),
 
-              // Campos del formulario
+              // Banco (máx 50 caracteres)
               _buildTextFieldWithIcon(
                 controller: _bancoController,
                 label: 'Banco',
@@ -280,9 +361,12 @@ class _ModificacionDetalleTarjetaCreditoContentState
                 icon: Icons.account_balance,
                 errorText: _errorBanco,
                 editable: widget.modoEdicion,
+                maxLength: 50,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
 
+              // Número de tarjeta (exactamente 4)
               _buildTextFieldWithIcon(
                 controller: _numeroTarjetaController,
                 label: 'Número de tarjeta',
@@ -292,12 +376,16 @@ class _ModificacionDetalleTarjetaCreditoContentState
                 editable: widget.modoEdicion,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 helperText:
                     'Por temas de seguridad, solo ingrese los últimos 4 dígitos de su tarjeta. Esto ayuda a proteger sus datos.',
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 16),
 
+              // Nombre del titular (máx 40 caracteres)
               _buildTextFieldWithIcon(
                 controller: _aliasController,
                 label: 'Nombre del titular',
@@ -305,6 +393,8 @@ class _ModificacionDetalleTarjetaCreditoContentState
                 icon: Icons.label,
                 errorText: _errorAlias,
                 editable: widget.modoEdicion,
+                maxLength: 40,
+                inputFormatters: [LengthLimitingTextInputFormatter(50)],
               ),
               const SizedBox(height: 16),
 
@@ -319,9 +409,15 @@ class _ModificacionDetalleTarjetaCreditoContentState
                       errorText: _errorLimite,
                       editable: widget.modoEdicion,
                       keyboardType: TextInputType.number,
+                      maxLength: 9, // máximo 9 dígitos (ajústalo si necesitas)
                       helperText:
                           'Ingrese el monto límite que su banco ha asignado a esta tarjeta de crédito.',
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(
+                          9,
+                        ), // <- límite de caracteres
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -329,6 +425,12 @@ class _ModificacionDetalleTarjetaCreditoContentState
                 ],
               ),
               const SizedBox(height: 16),
+
+              // --------- CAMPO DE SALDO SOLO EN DETALLE (NO EDITABLE) -----------
+              if (!widget.modoEdicion) ...[
+                _buildSaldoField(saldoActual),
+                const SizedBox(height: 16),
+              ],
 
               Row(
                 children: [
@@ -403,6 +505,60 @@ class _ModificacionDetalleTarjetaCreditoContentState
     );
   }
 
+  Widget _buildSaldoField(double saldo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 8.0),
+          child: Text(
+            'Saldo actual',
+            style: TextStyle(
+              color: CardColors.textDark,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Material(
+          elevation: 2,
+          borderRadius: BorderRadius.circular(12),
+          child: TextField(
+            enabled: false,
+            controller: TextEditingController(
+              text: 'Q${saldo.toStringAsFixed(2)}',
+            ),
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.bold,
+            ),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(
+                Icons.account_balance_wallet,
+                color: Colors.grey,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade200,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTextFieldWithIcon({
     required TextEditingController controller,
     required String label,
@@ -455,6 +611,14 @@ class _ModificacionDetalleTarjetaCreditoContentState
             style: TextStyle(color: CardColors.textDark),
             maxLength: maxLength,
             inputFormatters: inputFormatters,
+            // ¡AGREGA ESTA PROPIEDAD PARA OCULTAR EL CONTADOR!
+            buildCounter:
+                (
+                  BuildContext context, {
+                  required int currentLength,
+                  required bool isFocused,
+                  int? maxLength,
+                }) => null,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -719,19 +883,13 @@ class _ExpirationDateFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     var newText = newValue.text;
-
     if (newText.length > 5) {
       return oldValue;
     }
-
-    // Eliminar todos los caracteres no numéricos
     newText = newText.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // Insertar la barra después de los primeros 2 dígitos
     if (newText.length >= 2) {
       newText = '${newText.substring(0, 2)}/${newText.substring(2)}';
     }
-
     return TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newText.length),

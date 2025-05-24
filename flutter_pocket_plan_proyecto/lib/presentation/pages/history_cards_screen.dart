@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../data/models/card_manager.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/models/credit_card_model.dart';
+import '../../data/models/debit_card_model.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
 import '../widgets/global_components.dart';
 import 'modificacion_detalle_tarjeta_credito_screen.dart';
 import 'modificacion_detalle_tarjeta_debito.dart';
 import 'register_credi_cart_screen.dart';
 import 'register_debit_card_screen.dart';
+import '../providers/user_provider.dart';
 
 class HistoryCardsScreen extends StatelessWidget {
   const HistoryCardsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GlobalLayout(
-      titulo: 'Mis Tarjetas',
-      body: const _HistoryCardsContent(),
-      mostrarDrawer: true,
-      mostrarBotonHome: true,
-      navIndex: 0,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacementNamed(context, '/resumen');
+        return false; // Bloquea el back por defecto
+      },
+      child: GlobalLayout(
+        titulo: 'Mis Tarjetas',
+        body: const _HistoryCardsContent(),
+        mostrarDrawer: true,
+        mostrarBotonHome: true,
+        navIndex: 0,
+      ),
     );
   }
 }
@@ -31,9 +43,89 @@ class _HistoryCardsContent extends StatefulWidget {
 class _HistoryCardsContentState extends State<_HistoryCardsContent> {
   String tipoSeleccionado = 'Crédito';
 
+  final TarjetaCreditoRepository _creditoRepo = TarjetaCreditoRepository();
+  final TarjetaDebitoRepository _debitoRepo = TarjetaDebitoRepository();
+
+  List<CreditCard> _creditCards = [];
+  List<DebitCard> _debitCards = [];
+  bool _isLoading = true;
+  int? _userId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    _userId = userProvider.usuario?.id;
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    if (_userId == null) {
+      setState(() {
+        _creditCards = [];
+        _debitCards = [];
+        _isLoading = false;
+      });
+      return;
+    }
+    setState(() => _isLoading = true);
+
+    // --- NUEVO: Actualiza saldos por fecha de corte antes de mostrar tarjetas ---
+    await _creditoRepo.actualizarSaldosPorFechaCorte(_userId!);
+
+    final creditCards = await _creditoRepo.getTarjetasCreditoByUser(_userId!);
+    final debitCards = await _debitoRepo.getTarjetasDebitoByUser(_userId!);
+
+    setState(() {
+      _creditCards = creditCards;
+      _debitCards = debitCards;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _eliminarTarjeta(dynamic tarjeta) async {
+    bool eliminado = false;
+    if (tarjeta is CreditCard) {
+      if (tarjeta.id != null && tarjeta.userId != null) {
+        eliminado =
+            await _creditoRepo.deleteTarjetaCredito(
+              tarjeta.id!,
+              tarjeta.userId!,
+            ) >
+            0;
+      }
+    } else if (tarjeta is DebitCard) {
+      if (tarjeta.id != null && tarjeta.userId != null) {
+        eliminado =
+            await _debitoRepo.deleteTarjetaDebito(
+              tarjeta.id!,
+              tarjeta.userId!,
+            ) >
+            0;
+      }
+    }
+    if (eliminado) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tarjeta eliminada correctamente'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      await _loadCards();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo eliminar la tarjeta'),
+          backgroundColor: Colors.red[800],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cardManager = CardManager();
     final Color fondoColor =
         tipoSeleccionado == 'Crédito'
             ? const Color.fromARGB(179, 225, 245, 254)
@@ -41,16 +133,12 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
 
     return Stack(
       children: [
-        // Fondo dinámico
         Container(color: fondoColor),
-
-        // Contenido principal
         GestureDetector(
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           behavior: HitTestBehavior.opaque,
           child: Column(
             children: [
-              // Ícono principal
               Padding(
                 padding: const EdgeInsets.only(top: 16, bottom: 24),
                 child: Center(
@@ -100,8 +188,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                   ),
                 ),
               ),
-
-              // Selector de tipo
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
@@ -189,32 +275,31 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                   ),
                 ),
               ),
-
-              // Lista de tarjetas
               Expanded(
-                child: AnimatedSwitcher(
-                  duration: Duration(milliseconds: 300),
-                  transitionBuilder: (
-                    Widget child,
-                    Animation<double> animation,
-                  ) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SizeTransition(
-                        sizeFactor: animation,
-                        axis: Axis.vertical,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child:
-                      tipoSeleccionado == 'Crédito'
-                          ? _buildCreditCardList(cardManager.creditCards)
-                          : _buildDebitCardList(cardManager.debitCards),
-                ),
+                child:
+                    _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : AnimatedSwitcher(
+                          duration: Duration(milliseconds: 300),
+                          transitionBuilder: (
+                            Widget child,
+                            Animation<double> animation,
+                          ) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SizeTransition(
+                                sizeFactor: animation,
+                                axis: Axis.vertical,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child:
+                              tipoSeleccionado == 'Crédito'
+                                  ? _buildCreditCardList(_creditCards)
+                                  : _buildDebitCardList(_debitCards),
+                        ),
               ),
-
-              // Botón para agregar tarjeta
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: ElevatedButton.icon(
@@ -254,7 +339,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                                     ? const RegisterCreditCardScreen()
                                     : const RegisterDebitCardScreen(),
                       ),
-                    );
+                    ).then((_) => _loadCards());
                   },
                   icon: Icon(Icons.add_circle_outline, size: 22),
                   label: Text(
@@ -270,7 +355,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
     );
   }
 
-  // CONSTRUYE LISTA DE TARJETAS DE CRÉDITO
   Widget _buildCreditCardList(List<CreditCard> tarjetas) {
     return tarjetas.isEmpty
         ? _buildEmptyState()
@@ -334,7 +418,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
         );
   }
 
-  // CONSTRUYE LISTA DE TARJETAS DE DÉBITO
   Widget _buildDebitCardList(List<DebitCard> tarjetas) {
     return tarjetas.isEmpty
         ? _buildEmptyState()
@@ -404,7 +487,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
         );
   }
 
-  // ESTADO VACÍO (CUANDO NO HAY TARJETAS)
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -447,7 +529,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
     );
   }
 
-  // MENÚ DE OPCIONES (POPUP)
   Widget _buildPopupMenu(dynamic tarjeta) {
     return PopupMenuButton<String>(
       icon: Icon(Icons.more_vert, color: Colors.grey[600]),
@@ -455,7 +536,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
       elevation: 4,
       onSelected: (value) {
         if (value == 'eliminar') {
-          _eliminarTarjeta(tarjeta.id);
+          _mostrarDialogoEliminar(tarjeta);
         } else if (value == 'editar') {
           _editarTarjeta(context, tarjeta);
         } else if (value == 'detalles') {
@@ -498,8 +579,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
     );
   }
 
-  // ELIMINAR TARJETA (DIÁLOGO)
-  void _eliminarTarjeta(String id) {
+  void _mostrarDialogoEliminar(dynamic tarjeta) {
     showDialog(
       context: context,
       builder:
@@ -564,26 +644,9 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          onPressed: () {
-                            if (tipoSeleccionado == 'Crédito') {
-                              CardManager().removeCreditCard(id);
-                            } else {
-                              CardManager().removeDebitCard(id);
-                            }
-                            setState(() {});
+                          onPressed: () async {
                             Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Tarjeta eliminada correctamente',
-                                ),
-                                backgroundColor: Colors.red[600],
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            );
+                            await _eliminarTarjeta(tarjeta);
                           },
                           child: Text(
                             'Eliminar',
@@ -600,7 +663,6 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
     );
   }
 
-  // EDITAR TARJETA
   void _editarTarjeta(BuildContext context, dynamic tarjeta) {
     if (tarjeta is CreditCard) {
       Navigator.push(
@@ -612,7 +674,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                 modoEdicion: true,
               ),
         ),
-      ).then((_) => setState(() {}));
+      ).then((_) => _loadCards());
     } else if (tarjeta is DebitCard) {
       Navigator.push(
         context,
@@ -623,11 +685,10 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
                 modoEdicion: true,
               ),
         ),
-      ).then((_) => setState(() {}));
+      ).then((_) => _loadCards());
     }
   }
 
-  // MOSTRAR DETALLES DE TARJETA
   void _mostrarDetalles(BuildContext context, dynamic tarjeta) {
     if (tarjeta is CreditCard) {
       Navigator.push(
