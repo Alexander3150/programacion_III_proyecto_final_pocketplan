@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/repositories/cuota_ahorro_repository.dart';
+import '../../data/models/repositories/cuota_pago_repository.dart';
+import '../../data/models/repositories/movimiento_repository.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_deuda_repository.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
 import '../../data/models/repositories/usuario_repository.dart';
 import '../../data/models/user_model.dart';
 import '../providers/user_provider.dart';
@@ -51,25 +58,25 @@ class _DeleteUserWidgetState extends State<DeleteUserWidget> {
   String? _error;
   bool _obscurePassword = true;
 
-  // late final UsuarioRepository _usuarioRepository;
-  /// late final SimuladorAhorroRepository _simAhorroRepository;
-  // late final SimuladorDeudaRepository _simDeudaRepository;
-  // late final TarjetaCreditoRepository _tarjetaCreditoRepository;
-  // late final TarjetaDebitoRepository _tarjetaDebitoRepository;
-  // late final CuotaAhorroRepository _cuotaAhorroRepository;
-  // late final CuotaPagoRepository _cuotaPagoRepository;
-  // late final MovimientoRepository _movimientoRepository;
+  late final UsuarioRepository _usuarioRepository;
+  late final SimuladorAhorroRepository _simAhorroRepository;
+  late final SimuladorDeudaRepository _simDeudaRepository;
+  late final TarjetaCreditoRepository _tarjetaCreditoRepository;
+  late final TarjetaDebitoRepository _tarjetaDebitoRepository;
+  late final CuotaAhorroRepository _cuotaAhorroRepository;
+  late final CuotaPagoRepository _cuotaPagoRepository;
+  late final MovimientoRepository _movimientoRepository;
 
   @override
   void initState() {
     super.initState();
-    //_usuarioRepository = UsuarioRepository();
-    /// _simAhorroRepository = SimuladorAhorroRepository();
-    // _simDeudaRepository = SimuladorDeudaRepository();
-    // _tarjetaCreditoRepository = TarjetaCreditoRepository();
-    // _tarjetaDebitoRepository = TarjetaDebitoRepository();
-    // _cuotaAhorroRepository = CuotaAhorroRepository();
-    // _cuotaPagoRepository = CuotaPagoRepository();
+    _usuarioRepository = UsuarioRepository();
+    _simAhorroRepository = SimuladorAhorroRepository();
+    _simDeudaRepository = SimuladorDeudaRepository();
+    _tarjetaCreditoRepository = TarjetaCreditoRepository();
+    _tarjetaDebitoRepository = TarjetaDebitoRepository();
+    _cuotaAhorroRepository = CuotaAhorroRepository();
+    _cuotaPagoRepository = CuotaPagoRepository();
     _passController.addListener(_validatePassword);
 
     /// _movimientoRepository = MovimientoRepository();
@@ -278,7 +285,7 @@ No lo compartas con otras personas para proteger tu privacidad.
   }
 
   // --------- Elimina TODOS los datos del usuario ----------
-  /*Future<void> deleteAllUserData(int userId) async {
+  Future<void> deleteAllUserData(int userId) async {
     final simAhorros = await _simAhorroRepository.getSimuladoresAhorroByUser(
       userId,
     );
@@ -406,47 +413,6 @@ No lo compartas con otras personas para proteger tu privacidad.
         _error = 'Contraseña incorrecta';
       });
     }
-  }
-*/
-  // Este metodo se tiene que eliminar cuando ya todo este bien
-  void _mostrarDialogoEliminar(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirmar eliminación'),
-          content: const Text(
-            '¿Estás seguro de que deseas eliminar la cuenta? Esta acción no se puede deshacer.',
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Cierra el diálogo
-              },
-            ),
-            TextButton(
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: Colors.red),
-              ),
-              onPressed: () async {
-                Navigator.of(context).pop(); // Cierra el diálogo
-
-                // Muestra el SnackBar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('¡Cuenta eliminada exitosamente!'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -1056,9 +1022,7 @@ No lo compartas con otras personas para proteger tu privacidad.
                                 text: 'Eliminar cuenta',
                                 color: Colors.red,
                                 screenSize: screenSize,
-                                onPressed: () {
-                                  _mostrarDialogoEliminar(context);
-                                },
+                                onPressed: _eliminarCuenta,
                               ),
                             ),
                           ],
