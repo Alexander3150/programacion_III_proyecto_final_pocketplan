@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/debit_card_model.dart';
 import '../../data/models/repositories/tarjeta_debito_repository.dart';
 
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 import 'register_credi_cart_screen.dart';
@@ -188,7 +189,15 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
         expiracion: _fechaExpiracionController.text,
       );
       final id = await _debitCardRepository.insertTarjetaDebito(nuevaTarjeta);
+
       if (id > 0) {
+        // ------ PROGRAMAR NOTIFICACIONES ------
+        final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
+        await NotificationService().scheduleDebitCardNotifications(
+          tarjetaGuardada,
+          _userId!,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Tarjeta de débito guardada con éxito'),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/credit_card_model.dart';
 import '../../data/models/repositories/tarjeta_credito_repository.dart';
 
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
@@ -237,9 +238,7 @@ class _RegisterCreditCardContentState
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
         limite: double.tryParse(_limiteController.text) ?? 0.0,
-        saldo:
-            double.tryParse(_limiteController.text) ??
-            0.0, // saldo igual al límite inicial
+        saldo: double.tryParse(_limiteController.text) ?? 0.0,
         expiracion: _fechaExpiracionController.text,
         corte: _fechaCorteController.text,
         pago: _fechaPagoController.text,
@@ -248,6 +247,13 @@ class _RegisterCreditCardContentState
       final id = await _creditCardRepository.insertTarjetaCredito(nuevaTarjeta);
 
       if (id > 0) {
+        // ------ PROGRAMAR NOTIFICACIONES ------
+        final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
+        await NotificationService().scheduleCreditCardNotifications(
+          tarjetaGuardada,
+          userId,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Tarjeta de crédito guardada con éxito'),

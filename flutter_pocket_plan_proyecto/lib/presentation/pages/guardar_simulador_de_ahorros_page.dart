@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/repositories/cuota_ahorro_repository.dart';
 import '../../data/models/repositories/simulador_ahorro_repository.dart';
 import '../../data/models/simulador_ahorro.dart';
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import '../providers/user_provider.dart';
 import 'datos_ahorro_page.dart';
@@ -144,10 +145,24 @@ class _GuardarSimuladorDeAhorrosWidgetState
     if (confirm) {
       final SimuladorAhorroConProgreso eliminado = simuladoresGuardados[index];
       if (_userId != null) {
+        // Elimina de la base de datos
         await _repository.deleteSimuladorAhorro(
           eliminado.simulador.id!,
           _userId!,
         );
+
+        // --- Elimina notificaciones relacionadas ---
+        final baseId = (eliminado.simulador.id! ?? 10000 + _userId!);
+        final notificationService = NotificationService();
+
+        // DÍA ANTES (9AM y 3PM)
+        await notificationService.cancelNotification(baseId * 10 + 1);
+        await notificationService.cancelNotification(baseId * 10 + 2);
+
+        // MERO DÍA (9AM y 3PM)
+        await notificationService.cancelNotification((baseId * 10 + 1) + 10000);
+        await notificationService.cancelNotification((baseId * 10 + 2) + 10000);
+
         await _loadSimuladores();
       }
 

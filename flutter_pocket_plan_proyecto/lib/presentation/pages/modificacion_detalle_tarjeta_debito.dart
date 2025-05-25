@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../data/models/debit_card_model.dart';
 import '../../data/models/repositories/tarjeta_debito_repository.dart';
 
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
 
@@ -186,7 +187,7 @@ class _ModificacionDetalleTarjetaDebitoContentState
         _errorFechaExpiracion == null) {
       final tarjetaActualizada = DebitCard(
         id: widget.tarjeta.id,
-        userId: widget.tarjeta.userId, // <- ¡IMPORTANTE!
+        userId: widget.tarjeta.userId,
         banco: _bancoController.text,
         numero: _numeroTarjetaController.text,
         alias: _aliasController.text,
@@ -198,6 +199,17 @@ class _ModificacionDetalleTarjetaDebitoContentState
       );
 
       if (result > 0) {
+        // Cancelar notificaciones anteriores
+        await NotificationService().cancelDebitCardNotifications(
+          tarjetaActualizada.id!,
+          tarjetaActualizada.userId,
+        );
+        // Programar nuevas notificaciones para la tarjeta actualizada
+        await NotificationService().scheduleDebitCardNotifications(
+          tarjetaActualizada,
+          tarjetaActualizada.userId,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Tarjeta actualizada con éxito'),

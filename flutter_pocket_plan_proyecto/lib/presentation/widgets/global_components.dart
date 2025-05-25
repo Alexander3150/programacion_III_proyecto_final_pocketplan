@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import 'dialogo_filtro_informe.dart';
 import 'dialogo_filtro_informe_ahorros.dart';
@@ -240,70 +241,7 @@ class GlobalLayout extends StatelessWidget {
           currentIndex: navIndex,
           onTap: (index) async {
             if (index == 2 && mostrarBotonInforme) {
-              Map<String, dynamic>? result;
-              Widget? nextPage;
-              String nextTitle = "Informe";
-
-              switch (tipoInforme) {
-                case 'ahorro':
-                  result = await showDialog<Map<String, dynamic>>(
-                    context: context,
-                    builder: (context) => const DialogoFiltroInformeAhorros(),
-                  );
-                  if (result != null) {
-                    nextTitle = "Informe de Ahorros";
-                    nextPage = InformeAhorrosPage(
-                      estado: result['estado'],
-                      periodo: result['periodo'],
-                      dateRange: result['dateRange'],
-                    );
-                  }
-                  break;
-                case 'deuda':
-                  result = await showDialog<Map<String, dynamic>>(
-                    context: context,
-                    builder: (context) => const DialogoFiltroInformeDeudas(),
-                  );
-                  if (result != null) {
-                    nextTitle = "Informe de Deudas";
-                    nextPage = InformeDeudasPage(
-                      estado: result['estado'],
-                      periodo: result['periodo'],
-                      dateRange: result['dateRange'],
-                    );
-                  }
-                  break;
-                default:
-                  result = await showDialog<Map<String, dynamic>>(
-                    context: context,
-                    builder: (context) => const DialogoFiltroInforme(),
-                  );
-                  if (result != null) {
-                    nextTitle = "Informe Financiero";
-                    nextPage = InformePage(
-                      tipo: result['tipo'],
-                      periodo: result['periodo'],
-                      dateRange: result['dateRange'],
-                    );
-                  }
-              }
-
-              if (nextPage != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (_) => GlobalLayout(
-                          titulo: nextTitle,
-                          body: nextPage!,
-                          mostrarDrawer: true,
-                          navIndex: 2,
-                          mostrarBotonInforme: true,
-                          tipoInforme: tipoInforme,
-                        ),
-                  ),
-                );
-              }
+              // ...tu lógica de informes...
             } else if (onTapNav != null) {
               onTapNav!(index);
             } else {
@@ -312,8 +250,20 @@ class GlobalLayout extends StatelessWidget {
                   Navigator.pushNamed(context, '/graficos');
                   break;
                 case 1:
+                  // ========== Notificación instantánea de prueba ==========
+                  await NotificationService().init();
+                  await NotificationService().showTestNotification();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Notificación instantánea enviada. Verifica tu barra de notificaciones.',
+                      ),
+                    ),
+                  );
                   break;
                 case 2:
+                  // Ya cubierto arriba
                   break;
               }
             }

@@ -3,11 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/repositories/usuario_repository.dart';
+import '../../notifications/notification_auto_scheduler.dart';
 import '../providers/user_provider.dart';
 import 'create_user_page.dart';
 import 'recover_password_page.dart';
 import 'resumen_page.dart';
 import 'transition_page.dart';
+
+import '../../notifications/notification_service.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_deuda_repository.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
 
 /// Paleta de colores de la aplicación
 class AppColors {
@@ -151,12 +158,10 @@ class _IniciarSesionState extends State<IniciarSesion>
     }
   }
 
-  /// Verifica las credenciales del usuario contra la base de datos
   Future<void> _loginUser() async {
     final username = _userController.text.trim();
     final password = _passController.text.trim();
 
-    // Buscar el usuario usando el repositorio y comparar contraseña
     final user = await _usuarioRepository.getUsuarioByUsername(username);
     if (user == null || user.password != password) {
       setState(() {
@@ -164,10 +169,30 @@ class _IniciarSesionState extends State<IniciarSesion>
         _passError = 'Usuario o contraseña incorrectos';
       });
     } else {
-      // Credenciales correctas - navegar a pantalla principal
       Provider.of<UsuarioProvider>(context, listen: false).setUsuario(user);
+
+      // Aquí inicializas e agendas notificaciones del usuario logueado
+      await _programarNotificacionesAutomaticas(user.id!);
+
       _showSuccessAndNavigate();
     }
+  }
+
+  Future<void> _programarNotificacionesAutomaticas(int userId) async {
+    await NotificationService().init();
+
+    final ahorroRepo = SimuladorAhorroRepository();
+    final deudaRepo = SimuladorDeudaRepository();
+    final creditoRepo = TarjetaCreditoRepository();
+    final debitoRepo = TarjetaDebitoRepository();
+
+    final scheduler = NotificationAutoScheduler(
+      ahorroRepo: ahorroRepo,
+      deudaRepo: deudaRepo,
+      creditoRepo: creditoRepo,
+      debitoRepo: debitoRepo,
+    );
+    await scheduler.programarNotificacionesDeUsuario(userId);
   }
 
   /// Muestra mensaje de éxito y navega a la pantalla principal

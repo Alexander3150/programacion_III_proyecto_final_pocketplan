@@ -5,6 +5,7 @@ import '../../data/models/credit_card_model.dart';
 import '../../data/models/debit_card_model.dart';
 import '../../data/models/repositories/tarjeta_credito_repository.dart';
 import '../../data/models/repositories/tarjeta_debito_repository.dart';
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import 'modificacion_detalle_tarjeta_credito_screen.dart';
 import 'modificacion_detalle_tarjeta_debito.dart';
@@ -85,8 +86,15 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
 
   Future<void> _eliminarTarjeta(dynamic tarjeta) async {
     bool eliminado = false;
+
     if (tarjeta is CreditCard) {
       if (tarjeta.id != null && tarjeta.userId != null) {
+        // Cancela todas las notificaciones asociadas a esta tarjeta de crédito
+        await NotificationService().cancelCreditCardNotifications(
+          tarjeta.id!,
+          tarjeta.userId!,
+        );
+
         eliminado =
             await _creditoRepo.deleteTarjetaCredito(
               tarjeta.id!,
@@ -96,6 +104,12 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
       }
     } else if (tarjeta is DebitCard) {
       if (tarjeta.id != null && tarjeta.userId != null) {
+        // Cancela todas las notificaciones asociadas a esta tarjeta de débito
+        await NotificationService().cancelDebitCardNotifications(
+          tarjeta.id!,
+          tarjeta.userId!,
+        );
+
         eliminado =
             await _debitoRepo.deleteTarjetaDebito(
               tarjeta.id!,
@@ -104,6 +118,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
             0;
       }
     }
+
     if (eliminado) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
