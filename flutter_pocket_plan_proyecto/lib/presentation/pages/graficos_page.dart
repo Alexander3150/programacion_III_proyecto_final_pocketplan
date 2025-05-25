@@ -132,10 +132,17 @@ class _GraficosScreenState extends State<GraficosScreen>
     setState(() => _selectedEtiqueta = null);
   }
 
+  // -------------- PRINCIPAL --------------
   @override
   Widget build(BuildContext context) {
-    final isTablet = MediaQuery.of(context).size.width > 600;
-    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide > 600;
+    final isLandscape = size.width > size.height;
+
+    // Tamaños responsivos
+    final tabFontSize = isTablet ? 18.0 : 14.0;
+    final totalAmountFontSize = isTablet ? 34.0 : 28.0;
+    final chartFontSize = isTablet ? 18.0 : 14.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -143,17 +150,17 @@ class _GraficosScreenState extends State<GraficosScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Análisis Financiero',
           style: TextStyle(
-            color: Color(0xFF2C3E50),
+            color: const Color(0xFF2C3E50),
             fontWeight: FontWeight.w600,
-            fontSize: 25,
+            fontSize: isTablet ? 28 : 22,
           ),
         ),
         iconTheme: const IconThemeData(color: Color(0xFF2C3E50)),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
+          preferredSize: const Size.fromHeight(54),
           child: Column(
             children: [
               TabBar(
@@ -163,9 +170,9 @@ class _GraficosScreenState extends State<GraficosScreen>
                 indicatorColor: const Color(0xFF18BC9C),
                 indicatorWeight: 3,
                 indicatorSize: TabBarIndicatorSize.tab,
-                labelStyle: const TextStyle(
+                labelStyle: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: tabFontSize,
                 ),
                 tabs: const [
                   Tab(text: 'Gráfico de Pastel', icon: Icon(Icons.pie_chart)),
@@ -178,254 +185,118 @@ class _GraficosScreenState extends State<GraficosScreen>
         ),
       ),
       body: SafeArea(
-        child: Column(
+        child: TabBarView(
+          controller: _tabController,
           children: [
-            // Filtros superiores
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            // Primer Tab: Pie chart
+            SingleChildScrollView(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.withOpacity(0.3),
-                            ),
-                          ),
-                          child: ToggleButtons(
-                            borderRadius: BorderRadius.circular(12),
-                            borderColor: Colors.transparent,
-                            selectedBorderColor: Colors.transparent,
-                            fillColor: const Color(
-                              0xFF18BC9C,
-                            ).withOpacity(0.15),
-                            selectedColor: const Color(0xFF18BC9C),
-                            color: Colors.grey[700],
-                            isSelected: [
-                              _selectedTipo == 'ingreso',
-                              _selectedTipo == 'egreso',
-                            ],
-                            onPressed:
-                                (i) => setState(() {
-                                  _selectedTipo = i == 0 ? 'ingreso' : 'egreso';
-                                  _selectedEtiqueta = null;
-                                }),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(Icons.arrow_downward, size: 18),
-                                    SizedBox(width: 6),
-                                    Text('Ingresos'),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(Icons.arrow_upward, size: 18),
-                                    SizedBox(width: 6),
-                                    Text('Gastos'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                  _buildFiltros(isTablet, tabFontSize),
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 12),
+                    decoration: BoxDecoration(
+                      color:
+                          _selectedTipo == 'egreso'
+                              ? const Color(0xFFE74C3C).withOpacity(0.05)
+                              : const Color(0xFF18BC9C).withOpacity(0.05),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.withOpacity(0.1),
+                          width: 1,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedPeriod,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFF2C3E50),
-                              ),
-                              items:
-                                  [
-                                        'Día',
-                                        'Semana',
-                                        'Mes',
-                                        'Año',
-                                        'Personalizado',
-                                      ]
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                            ),
-                                            child: Text(e),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                              onChanged: (v) {
-                                if (v == 'Personalizado') {
-                                  _selectDateRange(context);
-                                } else {
-                                  setState(() {
-                                    _selectedPeriod = v!;
-                                    if (v == 'Día') {
-                                      _dateRange = DateTimeRange(
-                                        start: DateTime.now(),
-                                        end: DateTime.now(),
-                                      );
-                                    } else if (v == 'Semana') {
-                                      _dateRange = DateTimeRange(
-                                        start: DateTime.now().subtract(
-                                          const Duration(days: 6),
-                                        ),
-                                        end: DateTime.now(),
-                                      );
-                                    } else if (v == 'Mes') {
-                                      _dateRange = DateTimeRange(
-                                        start: DateTime.now().subtract(
-                                          const Duration(days: 30),
-                                        ),
-                                        end: DateTime.now(),
-                                      );
-                                    } else if (v == 'Año') {
-                                      _dateRange = DateTimeRange(
-                                        start: DateTime.now().subtract(
-                                          const Duration(days: 365),
-                                        ),
-                                        end: DateTime.now(),
-                                      );
-                                    }
-                                    _selectedEtiqueta = null;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.calendar_today, size: 18),
-                              elevation: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_selectedEtiqueta != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
+                    ),
+                    child: Column(
                       children: [
-                        Chip(
-                          backgroundColor: obtenerColorPorEtiqueta(
-                            _selectedEtiqueta!,
-                          ).withOpacity(0.13),
-                          label: Row(
-                            children: [
-                              Icon(
-                                obtenerIconoPorEtiqueta(_selectedEtiqueta!),
-                                color: obtenerColorPorEtiqueta(
-                                  _selectedEtiqueta!,
-                                ),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _selectedEtiqueta!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          _selectedTipo == 'egreso'
+                              ? 'GASTOS TOTALES'
+                              : 'INGRESOS TOTALES',
+                          style: TextStyle(
+                            fontSize: tabFontSize * 0.95,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                            letterSpacing: 0.5,
                           ),
-                          onDeleted: _limpiarFiltroEtiqueta,
-                          deleteIcon: const Icon(Icons.close, size: 18),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Q${totalTipo.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: totalAmountFontSize,
+                            color:
+                                _selectedTipo == 'egreso'
+                                    ? const Color(0xFFE74C3C)
+                                    : const Color(0xFF18BC9C),
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                ],
-              ),
-            ),
-            // Total
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color:
-                    _selectedTipo == 'egreso'
-                        ? const Color(0xFFE74C3C).withOpacity(0.05)
-                        : const Color(0xFF18BC9C).withOpacity(0.05),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.grey.withOpacity(0.1),
-                    width: 1,
                   ),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    _selectedTipo == 'egreso'
-                        ? 'GASTOS TOTALES'
-                        : 'INGRESOS TOTALES',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Q${totalTipo.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 28,
-                      color:
-                          _selectedTipo == 'egreso'
-                              ? const Color(0xFFE74C3C)
-                              : const Color(0xFF18BC9C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Gráficos y lista
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
                   _buildGraficosYDetalle(
                     isTablet: isTablet,
+                    isLandscape: isLandscape,
+                    chartFontSize: chartFontSize,
                     enablePieSelect: true,
                   ),
+                ],
+              ),
+            ),
+            // Segundo Tab: Bar chart
+            SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildFiltros(isTablet, tabFontSize),
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 12),
+                    decoration: BoxDecoration(
+                      color:
+                          _selectedTipo == 'egreso'
+                              ? const Color(0xFFE74C3C).withOpacity(0.05)
+                              : const Color(0xFF18BC9C).withOpacity(0.05),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          _selectedTipo == 'egreso'
+                              ? 'GASTOS TOTALES'
+                              : 'INGRESOS TOTALES',
+                          style: TextStyle(
+                            fontSize: tabFontSize * 0.95,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Q${totalTipo.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: totalAmountFontSize,
+                            color:
+                                _selectedTipo == 'egreso'
+                                    ? const Color(0xFFE74C3C)
+                                    : const Color(0xFF18BC9C),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildGraficosYDetalle(
                     isTablet: isTablet,
+                    isLandscape: isLandscape,
+                    chartFontSize: chartFontSize,
                     enablePieSelect: false,
                   ),
                 ],
@@ -437,8 +308,167 @@ class _GraficosScreenState extends State<GraficosScreen>
     );
   }
 
+  // ------------------- FILTROS -------------------
+  Widget _buildFiltros(bool isTablet, double tabFontSize) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 32 : 16,
+        vertical: isTablet ? 16 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  child: ToggleButtons(
+                    borderRadius: BorderRadius.circular(12),
+                    borderColor: Colors.transparent,
+                    selectedBorderColor: Colors.transparent,
+                    fillColor: const Color(0xFF18BC9C).withOpacity(0.15),
+                    selectedColor: const Color(0xFF18BC9C),
+                    color: Colors.grey[700],
+                    isSelected: [
+                      _selectedTipo == 'ingreso',
+                      _selectedTipo == 'egreso',
+                    ],
+                    onPressed:
+                        (i) => setState(() {
+                          _selectedTipo = i == 0 ? 'ingreso' : 'egreso';
+                          _selectedEtiqueta = null;
+                        }),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isTablet ? 26 : 16,
+                          vertical: isTablet ? 12 : 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.arrow_downward, size: 18),
+                            SizedBox(width: 6),
+                            Text('Ingresos'),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isTablet ? 26 : 16,
+                          vertical: isTablet ? 12 : 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.arrow_upward, size: 18),
+                            SizedBox(width: 6),
+                            Text('Gastos'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: isTablet ? 24 : 12),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedPeriod,
+                      style: TextStyle(
+                        color: const Color(0xFF2C3E50),
+                        fontSize: tabFontSize,
+                      ),
+                      items:
+                          ['Día', 'Semana', 'Mes', 'Año', 'Personalizado']
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(e),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (v) {
+                        if (v == 'Personalizado') {
+                          _selectDateRange(context);
+                        } else {
+                          setState(() {
+                            _selectedPeriod = v!;
+                            _selectedEtiqueta = null;
+                            // Actualiza _dateRange aquí si lo deseas...
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today, size: 18),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_selectedEtiqueta != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Chip(
+                  backgroundColor: obtenerColorPorEtiqueta(
+                    _selectedEtiqueta!,
+                  ).withOpacity(0.13),
+                  label: Row(
+                    children: [
+                      Icon(
+                        obtenerIconoPorEtiqueta(_selectedEtiqueta!),
+                        color: obtenerColorPorEtiqueta(_selectedEtiqueta!),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _selectedEtiqueta!,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  onDeleted: _limpiarFiltroEtiqueta,
+                  deleteIcon: const Icon(Icons.close, size: 18),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildGraficosYDetalle({
-    bool isTablet = false,
+    required bool isTablet,
+    required bool isLandscape,
+    required double chartFontSize,
     required bool enablePieSelect,
   }) {
     final data = distribucion;
@@ -448,273 +478,229 @@ class _GraficosScreenState extends State<GraficosScreen>
       agrupados.putIfAbsent(mov.etiqueta, () => []).add(mov);
     }
 
+    // Tamaños sugeridos:
+    final double chartHeight = isTablet ? 280 : 200;
+
     return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 8, right: 8, bottom: 0),
-      child: Column(
-        children: [
-          // Gráfico
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            height: isTablet ? 300 : 220,
-            child:
-                data.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.insert_chart_outlined,
-                            size: 48,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No hay datos para mostrar',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                    : enablePieSelect
-                    ? _buildPieChart(isTablet: isTablet)
-                    : _buildBarChart(isTablet: isTablet),
-          ),
-          // Lista de movimientos
-          Expanded(
-            child:
-                agrupados.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.receipt_long,
-                            size: 48,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No hay movimientos para mostrar',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                    : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: agrupados.entries.length,
-                      separatorBuilder:
-                          (context, index) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final entry = agrupados.entries.elementAt(index);
-                        final etiqueta = entry.key;
-                        final listaMov = entry.value;
-                        final color = obtenerColorPorEtiqueta(etiqueta);
-                        final icono = obtenerIconoPorEtiqueta(etiqueta);
-                        final montoTotal = listaMov.fold<double>(
-                          0,
-                          (s, m) => s + m.monto,
-                        );
-                        final porcentaje =
-                            totalTipo > 0
-                                ? (montoTotal / totalTipo) * 100
-                                : 0.0;
-
-                        return _buildCategoryCard(
-                          color: color,
-                          icon: icono,
-                          label: etiqueta,
-                          percentage: porcentaje,
-                          amount: montoTotal,
-                          movements: listaMov,
-                        );
-                      },
-                    ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard({
-    required Color color,
-    required IconData icon,
-    required String label,
-    required double percentage,
-    required double amount,
-    required List<Movimiento> movements,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ExpansionTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        title: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: SingleChildScrollView(
+        // Permite hacer scroll en cualquier orientación
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 6),
-            Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Container(
-                  width: percentage * 2,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${percentage.toStringAsFixed(1)}% del total',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'Q${amount.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            Text(
-              '${movements.length} ${movements.length == 1 ? 'movimiento' : 'movimientos'}',
-              style: TextStyle(color: Colors.grey[500], fontSize: 11),
-            ),
-          ],
-        ),
-        children:
-            movements.map((mov) => _buildMovementTile(mov, color)).toList(),
-      ),
-    );
-  }
-
-  Widget _buildPieChart({bool isTablet = false}) {
-    final data = distribucion;
-    if (data.isEmpty) return const SizedBox();
-    final sections =
-        data.entries.map((entry) {
-          final color = obtenerColorPorEtiqueta(entry.key);
-          return PieChartSectionData(
-            value: entry.value,
-            title: '${entry.value.toStringAsFixed(1)}%',
-            color: color,
-            radius: isTablet ? 92 : 64,
-            titleStyle: TextStyle(
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              shadows: const [Shadow(color: Colors.black38, blurRadius: 2)],
-            ),
-            badgeWidget: Container(
-              padding: const EdgeInsets.all(6),
+            // ------- Gráfico -------
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.all(isTablet ? 22 : 20),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.85),
-                shape: BoxShape.circle,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    color: Colors.grey.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(
-                obtenerIconoPorEtiqueta(entry.key),
-                color: Colors.white,
-                size: isTablet ? 24 : 18,
+              child: SizedBox(
+                height: chartHeight,
+                child:
+                    data.isEmpty
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.insert_chart_outlined,
+                                size: chartFontSize * 2,
+                                color: Colors.grey[300],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'No hay datos para mostrar',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: chartFontSize * 1.05,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : enablePieSelect
+                        ? _buildPieChart(
+                          isTablet: isTablet,
+                          chartFontSize: chartFontSize,
+                        )
+                        : _buildBarChart(
+                          isTablet: isTablet,
+                          chartFontSize: chartFontSize,
+                        ),
               ),
             ),
-            badgePositionPercentageOffset: .92,
-          );
-        }).toList();
-    final dataKeys = data.keys.toList();
-    return PieChart(
-      PieChartData(
-        sections: sections,
-        sectionsSpace: 1,
-        centerSpaceRadius: isTablet ? 60 : 40,
-        pieTouchData: PieTouchData(
-          touchCallback: (event, resp) {
-            if (resp != null && resp.touchedSection != null) {
-              final idx = resp.touchedSection!.touchedSectionIndex;
-              if (idx >= 0 && idx < dataKeys.length) {
-                setState(() {
-                  _selectedEtiqueta = dataKeys[idx];
-                });
-              }
-            }
-          },
+            // ------- Lista de movimientos -------
+            agrupados.isEmpty
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.receipt_long,
+                        size: chartFontSize * 2,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No hay movimientos para mostrar',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: chartFontSize * 1.05,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(bottom: isTablet ? 24 : 12),
+                  itemCount: agrupados.entries.length,
+                  separatorBuilder:
+                      (context, index) => SizedBox(height: isTablet ? 12 : 8),
+                  itemBuilder: (context, index) {
+                    final entry = agrupados.entries.elementAt(index);
+                    final etiqueta = entry.key;
+                    final listaMov = entry.value;
+                    final color = obtenerColorPorEtiqueta(etiqueta);
+                    final icono = obtenerIconoPorEtiqueta(etiqueta);
+                    final montoTotal = listaMov.fold<double>(
+                      0,
+                      (s, m) => s + m.monto,
+                    );
+                    final porcentaje =
+                        totalTipo > 0 ? (montoTotal / totalTipo) * 100 : 0.0;
+                    return _buildCategoryCard(
+                      color: color,
+                      icon: icono,
+                      label: etiqueta,
+                      percentage: porcentaje,
+                      amount: montoTotal,
+                      movements: listaMov,
+                      chartFontSize: chartFontSize,
+                    );
+                  },
+                ),
+          ],
         ),
       ),
-      swapAnimationDuration: const Duration(milliseconds: 600),
-      swapAnimationCurve: Curves.easeInOutCubic,
     );
   }
 
-  Widget _buildBarChart({bool isTablet = false}) {
+  // ----------- PieChart -----------
+  Widget _buildPieChart({
+    required bool isTablet,
+    required double chartFontSize,
+  }) {
+    final data = distribucion;
+    if (data.isEmpty) return const SizedBox();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double size =
+            constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+        size = size * 0.90; // Más grande aún (antes 0.80)
+        size = size.clamp(90, isTablet ? 260 : 200); // Subido el máximo
+
+        final chartRadius = size / 2.45;
+
+        final sections =
+            data.entries.map((entry) {
+              final color = obtenerColorPorEtiqueta(entry.key);
+              return PieChartSectionData(
+                value: entry.value,
+                title: '${entry.value.toStringAsFixed(1)}%',
+                color: color,
+                radius: chartRadius,
+                titleStyle: TextStyle(
+                  fontSize: chartFontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [Shadow(color: Colors.black38, blurRadius: 2)],
+                ),
+                badgeWidget: Container(
+                  padding: EdgeInsets.all(chartFontSize * 0.41),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.85),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    obtenerIconoPorEtiqueta(entry.key),
+                    color: Colors.white,
+                    size: chartFontSize * 1.07,
+                  ),
+                ),
+                badgePositionPercentageOffset: .92,
+              );
+            }).toList();
+
+        final dataKeys = data.keys.toList();
+
+        return Center(
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                sectionsSpace: 1,
+                centerSpaceRadius: chartRadius * 0.48,
+                pieTouchData: PieTouchData(
+                  touchCallback: (event, resp) {
+                    if (resp != null && resp.touchedSection != null) {
+                      final idx = resp.touchedSection!.touchedSectionIndex;
+                      if (idx >= 0 && idx < dataKeys.length) {
+                        setState(() {
+                          _selectedEtiqueta = dataKeys[idx];
+                        });
+                      }
+                    }
+                  },
+                ),
+              ),
+              swapAnimationDuration: const Duration(milliseconds: 600),
+              swapAnimationCurve: Curves.easeInOutCubic,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ----------- BarChart -----------
+  Widget _buildBarChart({
+    required bool isTablet,
+    required double chartFontSize,
+  }) {
     final data = distribucion;
     if (data.isEmpty) return const SizedBox();
     final labels = data.keys.toList();
-
-    final barWidth = isTablet ? 34.0 : 24.0;
-    final chartWidth = (barWidth + 22) * labels.length + 40;
+    final barWidth = isTablet ? 34.0 : 22.0;
+    final chartWidth = (barWidth + 20) * labels.length + 44;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
         width: chartWidth,
-        height: isTablet ? 290 : 200,
+        height: isTablet ? 190 : 120,
         child: BarChart(
           BarChartData(
             barTouchData: BarTouchData(enabled: false),
@@ -729,7 +715,7 @@ class _GraficosScreenState extends State<GraficosScreen>
                       child: Text(
                         '${value.toInt()}%',
                         style: TextStyle(
-                          fontSize: isTablet ? 14 : 12,
+                          fontSize: chartFontSize * 0.85,
                           color: Colors.grey[600],
                         ),
                       ),
@@ -740,7 +726,7 @@ class _GraficosScreenState extends State<GraficosScreen>
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: isTablet ? 40 : 32, // Reducido para solo iconos
+                  reservedSize: isTablet ? 40 : 28,
                   getTitlesWidget: (double value, _) {
                     if (value.toInt() < 0 || value.toInt() >= labels.length) {
                       return const SizedBox();
@@ -749,7 +735,7 @@ class _GraficosScreenState extends State<GraficosScreen>
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(chartFontSize * 0.39),
                         decoration: BoxDecoration(
                           color: obtenerColorPorEtiqueta(
                             etiqueta,
@@ -759,7 +745,7 @@ class _GraficosScreenState extends State<GraficosScreen>
                         child: Icon(
                           obtenerIconoPorEtiqueta(etiqueta),
                           color: obtenerColorPorEtiqueta(etiqueta),
-                          size: isTablet ? 20 : 16,
+                          size: chartFontSize * 1.1,
                         ),
                       ),
                     );
@@ -822,47 +808,171 @@ class _GraficosScreenState extends State<GraficosScreen>
     );
   }
 
-  Widget _buildMovementTile(Movimiento mov, Color color) {
+  // ----------- Cards de categorías ---------
+  Widget _buildCategoryCard({
+    required Color color,
+    required IconData icon,
+    required String label,
+    required double percentage,
+    required double amount,
+    required List<Movimiento> movements,
+    required double chartFontSize,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ExpansionTile(
+        leading: Container(
+          width: chartFontSize * 2.3,
+          height: chartFontSize * 2.3,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: chartFontSize * 1.1),
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: chartFontSize * 1.1,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: chartFontSize * 0.32),
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: percentage / 100,
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: chartFontSize * 0.32),
+            Text(
+              '${percentage.toStringAsFixed(1)}% del total',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: chartFontSize * 0.8,
+              ),
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'Q${amount.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: chartFontSize * 1.1,
+              ),
+            ),
+            Text(
+              '${movements.length} ${movements.length == 1 ? 'movimiento' : 'movimientos'}',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: chartFontSize * 0.7,
+              ),
+            ),
+          ],
+        ),
+        children:
+            movements
+                .map((mov) => _buildMovementTile(mov, color, chartFontSize))
+                .toList(),
+      ),
+    );
+  }
+
+  // ----------- Card de movimiento -----------
+  Widget _buildMovementTile(Movimiento mov, Color color, double chartFontSize) {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: chartFontSize * 0.55,
+        vertical: chartFontSize * 0.36,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: chartFontSize * 0.8,
+          vertical: chartFontSize * 0.7,
+        ),
         leading: Container(
-          width: 36,
-          height: 36,
+          width: chartFontSize * 1.7,
+          height: chartFontSize * 1.7,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.label_important_rounded, color: color, size: 20),
+          child: Icon(
+            Icons.label_important_rounded,
+            color: color,
+            size: chartFontSize * 1.1,
+          ),
         ),
         title: Text(
           mov.concepto,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: chartFontSize,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
+            SizedBox(height: chartFontSize * 0.25),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.calendar_today,
+                  size: chartFontSize * 0.8,
+                  color: Colors.grey[500],
+                ),
+                SizedBox(width: chartFontSize * 0.25),
                 Text(
                   _formatoFechaHora(mov.fecha),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: chartFontSize * 0.8,
+                    color: Colors.grey[600],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            _buildPaymentMethodChip(mov),
+            SizedBox(height: chartFontSize * 0.25),
+            _buildPaymentMethodChip(mov, chartFontSize),
           ],
         ),
         trailing: Column(
@@ -871,7 +981,10 @@ class _GraficosScreenState extends State<GraficosScreen>
           children: [
             Text(
               'Q${mov.monto.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: chartFontSize * 1.1,
+              ),
             ),
             Text(
               mov.tipo == 'ingreso' ? 'Ingreso' : 'Gasto',
@@ -880,7 +993,7 @@ class _GraficosScreenState extends State<GraficosScreen>
                     mov.tipo == 'ingreso'
                         ? const Color(0xFF18BC9C)
                         : const Color(0xFFE74C3C),
-                fontSize: 11,
+                fontSize: chartFontSize * 0.75,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -890,69 +1003,79 @@ class _GraficosScreenState extends State<GraficosScreen>
     );
   }
 
-  Widget _buildPaymentMethodChip(Movimiento mov) {
+  Widget _buildPaymentMethodChip(Movimiento mov, double chartFontSize) {
+    TextStyle chipStyle(Color color) =>
+        TextStyle(fontSize: chartFontSize * 0.8, color: color);
+    EdgeInsets chipPadding = EdgeInsets.symmetric(
+      horizontal: chartFontSize * 0.7,
+      vertical: chartFontSize * 0.5,
+    );
+
     if (mov.metodoPago == null || mov.metodoPago == 'Efectivo') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: chipPadding,
         decoration: BoxDecoration(
           color: const Color(0xFF16A085).withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.money, color: Color(0xFF16A085), size: 14),
-            SizedBox(width: 4),
-            Text(
-              "Efectivo",
-              style: TextStyle(fontSize: 12, color: Color(0xFF16A085)),
+          children: [
+            Icon(
+              Icons.money,
+              color: const Color(0xFF16A085),
+              size: chartFontSize * 0.8,
             ),
+            SizedBox(width: chartFontSize * 0.25),
+            Text("Efectivo", style: chipStyle(const Color(0xFF16A085))),
           ],
         ),
       );
     }
     if (mov.metodoPago == 'Tarjeta Débito') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: chipPadding,
         decoration: BoxDecoration(
           color: const Color(0xFF00BFAE).withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.credit_card, color: Color(0xFF00BFAE), size: 14),
-            SizedBox(width: 4),
-            Text(
-              "Débito",
-              style: TextStyle(fontSize: 12, color: Color(0xFF00BFAE)),
+          children: [
+            Icon(
+              Icons.credit_card,
+              color: const Color(0xFF00BFAE),
+              size: chartFontSize * 0.8,
             ),
+            SizedBox(width: chartFontSize * 0.25),
+            Text("Débito", style: chipStyle(const Color(0xFF00BFAE))),
           ],
         ),
       );
     }
     if (mov.metodoPago == 'Tarjeta Crédito') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: chipPadding,
         decoration: BoxDecoration(
           color: const Color(0xFF1976D2).withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.credit_card, color: Color(0xFF1976D2), size: 14),
-            SizedBox(width: 4),
-            Text(
-              "Crédito",
-              style: TextStyle(fontSize: 12, color: Color(0xFF1976D2)),
+          children: [
+            Icon(
+              Icons.credit_card,
+              color: const Color(0xFF1976D2),
+              size: chartFontSize * 0.8,
             ),
+            SizedBox(width: chartFontSize * 0.25),
+            Text("Crédito", style: chipStyle(const Color(0xFF1976D2))),
           ],
         ),
       );
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: chipPadding,
       decoration: BoxDecoration(
         color: const Color(0xFF2C3E50).withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -960,16 +1083,13 @@ class _GraficosScreenState extends State<GraficosScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.account_balance_wallet,
-            color: Color(0xFF2C3E50),
-            size: 14,
+            color: const Color(0xFF2C3E50),
+            size: chartFontSize * 0.8,
           ),
-          const SizedBox(width: 4),
-          Text(
-            mov.metodoPago!,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF2C3E50)),
-          ),
+          SizedBox(width: chartFontSize * 0.25),
+          Text(mov.metodoPago!, style: chipStyle(const Color(0xFF2C3E50))),
         ],
       ),
     );
