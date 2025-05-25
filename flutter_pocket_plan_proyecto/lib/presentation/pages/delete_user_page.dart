@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/repositories/cuota_ahorro_repository.dart';
+import '../../data/models/repositories/cuota_pago_repository.dart';
+import '../../data/models/repositories/movimiento_repository.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_deuda_repository.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
 import '../../data/models/repositories/usuario_repository.dart';
 import '../../data/models/user_model.dart';
 import '../providers/user_provider.dart';
@@ -51,28 +58,27 @@ class _DeleteUserWidgetState extends State<DeleteUserWidget> {
   String? _error;
   bool _obscurePassword = true;
 
-  // late final UsuarioRepository _usuarioRepository;
-  /// late final SimuladorAhorroRepository _simAhorroRepository;
-  // late final SimuladorDeudaRepository _simDeudaRepository;
-  // late final TarjetaCreditoRepository _tarjetaCreditoRepository;
-  // late final TarjetaDebitoRepository _tarjetaDebitoRepository;
-  // late final CuotaAhorroRepository _cuotaAhorroRepository;
-  // late final CuotaPagoRepository _cuotaPagoRepository;
-  // late final MovimientoRepository _movimientoRepository;
+  late final UsuarioRepository _usuarioRepository;
+  late final SimuladorAhorroRepository _simAhorroRepository;
+  late final SimuladorDeudaRepository _simDeudaRepository;
+  late final TarjetaCreditoRepository _tarjetaCreditoRepository;
+  late final TarjetaDebitoRepository _tarjetaDebitoRepository;
+  late final CuotaAhorroRepository _cuotaAhorroRepository;
+  late final CuotaPagoRepository _cuotaPagoRepository;
+  late final MovimientoRepository _movimientoRepository;
 
   @override
   void initState() {
     super.initState();
-    //_usuarioRepository = UsuarioRepository();
-    /// _simAhorroRepository = SimuladorAhorroRepository();
-    // _simDeudaRepository = SimuladorDeudaRepository();
-    // _tarjetaCreditoRepository = TarjetaCreditoRepository();
-    // _tarjetaDebitoRepository = TarjetaDebitoRepository();
-    // _cuotaAhorroRepository = CuotaAhorroRepository();
-    // _cuotaPagoRepository = CuotaPagoRepository();
+    _usuarioRepository = UsuarioRepository();
+    _simAhorroRepository = SimuladorAhorroRepository();
+    _simDeudaRepository = SimuladorDeudaRepository();
+    _tarjetaCreditoRepository = TarjetaCreditoRepository();
+    _tarjetaDebitoRepository = TarjetaDebitoRepository();
+    _cuotaAhorroRepository = CuotaAhorroRepository();
+    _cuotaPagoRepository = CuotaPagoRepository();
+    _movimientoRepository = MovimientoRepository();
     _passController.addListener(_validatePassword);
-
-    /// _movimientoRepository = MovimientoRepository();
   }
 
   @override
@@ -278,7 +284,7 @@ No lo compartas con otras personas para proteger tu privacidad.
   }
 
   // --------- Elimina TODOS los datos del usuario ----------
-  /*Future<void> deleteAllUserData(int userId) async {
+  Future<void> deleteAllUserData(int userId) async {
     final simAhorros = await _simAhorroRepository.getSimuladoresAhorroByUser(
       userId,
     );
@@ -321,132 +327,142 @@ No lo compartas con otras personas para proteger tu privacidad.
   // ------------- ELIMINAR CUENTA -----------------
   Future<void> _eliminarCuenta() async {
     final passwordIngresada = _passController.text.trim();
-
     final userFromDb = await _usuarioRepository.getUsuarioByUsername(
       widget.usuario.username,
     );
 
     if (userFromDb != null && userFromDb.password == passwordIngresada) {
-      showDialog(
+      final confirm = await showDialog<bool>(
         context: context,
         builder:
             (context) => AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(20),
               ),
-              elevation: 10,
-              title: const Text(
-                'Confirmar eliminación',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              elevation: 12,
+              backgroundColor: Colors.white,
+              titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 14,
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+              title: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Confirmar eliminación',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
               ),
               content: const Text(
                 'Esta acción es irreversible. Se eliminarán permanentemente todos tus datos, historial y contenido asociado a esta cuenta.',
+                style: TextStyle(fontSize: 16, color: Colors.black87),
               ),
               actions: [
                 TextButton(
-                  child: const Text('Cancelar'),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                ElevatedButton(
-                  child: const Text('Confirmar eliminación'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shadowColor: Colors.red[800],
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  onPressed: () async {
-                    if (userFromDb.id == null) {
-                      setState(() {
-                        _error = 'Error interno: el usuario no tiene ID';
-                      });
-                      Navigator.pop(context);
-                      return;
-                    }
-
-                    final userId = userFromDb.id!;
-                    await deleteAllUserData(userId);
-
-                    final result = await _usuarioRepository.deleteUsuario(
-                      userId,
-                    );
-                    Navigator.pop(context);
-
-                    if (result > 0) {
-                      if (mounted) {
-                        Provider.of<UsuarioProvider>(
-                          context,
-                          listen: false,
-                        ).cerrarSesion();
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/login',
-                          (_) => false,
-                        );
-                      }
-                    } else {
-                      setState(() {
-                        _error =
-                            'No se pudo eliminar la cuenta. Inténtalo nuevamente.';
-                      });
-                    }
-                  },
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  child: const Text('Confirmar eliminación'),
+                  onPressed: () => Navigator.pop(context, true),
                 ),
               ],
             ),
       );
+
+      if (confirm == true) {
+        if (userFromDb.id == null) {
+          setState(() {
+            _error = 'Error interno: el usuario no tiene ID';
+          });
+          return;
+        }
+        final userId = userFromDb.id!;
+
+        // Diálogo de "Eliminando cuenta..."
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => _DialogoEliminandoCuenta(),
+        );
+
+        // Empieza a contar tiempo (mínimo 2 segundos de feedback)
+        final stopwatch = Stopwatch()..start();
+
+        // Elimina datos del usuario
+        await deleteAllUserData(userId);
+        await _usuarioRepository.deleteUsuario(userId);
+
+        // Espera mínimo 2 segundos (realismo)
+        while (stopwatch.elapsedMilliseconds < 2000) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (!mounted) return;
+        }
+        stopwatch.stop();
+
+        // Cierra el diálogo de "eliminando"
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+
+        if (!mounted) return;
+        Provider.of<UsuarioProvider>(context, listen: false).cerrarSesion();
+
+        // NAVEGA DIRECTO AL LOGIN
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (_) => false,
+          arguments: {'showDeleted': true},
+        );
+      }
     } else {
       setState(() {
         _error = 'Contraseña incorrecta';
       });
     }
-  }
-*/
-  // Este metodo se tiene que eliminar cuando ya todo este bien
-  void _mostrarDialogoEliminar(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirmar eliminación'),
-          content: const Text(
-            '¿Estás seguro de que deseas eliminar la cuenta? Esta acción no se puede deshacer.',
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Cierra el diálogo
-              },
-            ),
-            TextButton(
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: Colors.red),
-              ),
-              onPressed: () async {
-                Navigator.of(context).pop(); // Cierra el diálogo
-
-                // Muestra el SnackBar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('¡Cuenta eliminada exitosamente!'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -1056,9 +1072,7 @@ No lo compartas con otras personas para proteger tu privacidad.
                                 text: 'Eliminar cuenta',
                                 color: Colors.red,
                                 screenSize: screenSize,
-                                onPressed: () {
-                                  _mostrarDialogoEliminar(context);
-                                },
+                                onPressed: _eliminarCuenta,
                               ),
                             ),
                           ],
@@ -1144,6 +1158,59 @@ No lo compartas con otras personas para proteger tu privacidad.
           ),
         ),
         onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+class _DialogoEliminandoCuenta extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      elevation: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      content: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: screenSize.width < 600 ? 28 : 38,
+          horizontal: screenSize.width < 600 ? 16 : 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Bonito loader animado
+            SizedBox(
+              height: 54,
+              width: 54,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                strokeWidth: 6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              "Eliminando cuenta...",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                letterSpacing: 0.1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Por favor espera un momento.\nEstamos eliminando todos tus datos de manera segura.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 15.5,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -53,8 +53,8 @@ class _GuardarSimuladorDeDeudasPageState
         body: DeudasRegistradasContent(),
         mostrarDrawer: true,
         mostrarBotonHome: true,
-       // mostrarBotonInforme: true,
-        //tipoInforme: 'deuda',
+        mostrarBotonInforme: true,
+        tipoInforme: 'deuda',
         navIndex: 0,
       ),
     );

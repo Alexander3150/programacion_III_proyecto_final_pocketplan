@@ -21,7 +21,6 @@ class AppColors {
   static const Color buttonShadow = Color(0x6618BC9C); // Sombra para botones
 }
 
-/// Pantalla de inicio de sesión con validaciones y animaciones
 class IniciarSesion extends StatefulWidget {
   const IniciarSesion({super.key});
 
@@ -56,7 +55,8 @@ class _IniciarSesionState extends State<IniciarSesion>
 
   // Estado para el efecto del botón de inicio de sesión
   bool _isButtonPressed = false;
-  // Variable para el usuario final para toda la app
+  // Para el cuando se elimina la cuenta
+
   final UsuarioRepository _usuarioRepository = UsuarioRepository();
 
   @override
@@ -182,15 +182,10 @@ class _IniciarSesionState extends State<IniciarSesion>
     );
 
     // Aquí deberías navegar a la pantalla principal del app
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => SplashScreen(
-              destination:
-                  ResumenScreen(), // Se debe colocar la pantalla home de los graficos te corresponde modificar esto José solo colocas el nombre de la clase e importas.
-            ),
+        builder: (context) => SplashScreen(destination: ResumenScreen()),
       ),
     );
   }
