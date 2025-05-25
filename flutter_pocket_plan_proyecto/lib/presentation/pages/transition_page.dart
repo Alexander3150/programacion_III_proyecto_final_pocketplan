@@ -115,129 +115,132 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
         child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 40),
-                  AnimatedBuilder(
-                    animation: _textController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _textScaleAnimation.value,
-                        child: Opacity(
-                          opacity: _textController.value,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Column(
-                      children: [
-                        // Usar el nombre obtenido del provider
-                        Text(
-                          '✨ ¡Bienvenido, $nombreUsuario! ✨',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    AnimatedBuilder(
+                      animation: _textController,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _textScaleAnimation.value,
+                          child: Opacity(
+                            opacity: _textController.value,
+                            child: child,
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        FadeTransition(
-                          opacity: _inspirationTextAnimation,
-                          child: const Text(
-                            "🚀 Tu disciplina financiera inspira. ¡Sigue así! 💪",
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          // Usar el nombre obtenido del provider
+                          Text(
+                            '✨ ¡Bienvenido, $nombreUsuario! ✨',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
-                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          FadeTransition(
+                            opacity: _inspirationTextAnimation,
+                            child: const Text(
+                              "🚀 Tu disciplina financiera inspira. ¡Sigue así! 💪",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    height: 180,
-                    width: 180,
-                    child: ScaleTransition(
-                      scale: _textScaleAnimation,
-                      child: Image.asset(
-                        'assets/img/pocketplan.png',
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.2),
-                            ),
-                            child: const Icon(
-                              Icons.image,
-                              size: 60,
-                              color: Colors.white,
-                            ),
-                          );
-                        },
-                        frameBuilder: (
-                          context,
-                          child,
-                          frame,
-                          wasSynchronouslyLoaded,
-                        ) {
-                          if (frame == null) {
-                            return const Center(
-                              child: CircularProgressIndicator(
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      height: 180,
+                      width: 180,
+                      child: ScaleTransition(
+                        scale: _textScaleAnimation,
+                        child: Image.asset(
+                          'assets/img/pocketplan.png',
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                              child: const Icon(
+                                Icons.image,
+                                size: 60,
                                 color: Colors.white,
                               ),
                             );
-                          }
-                          return child;
-                        },
-                        filterQuality: FilterQuality.high,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  AnimatedBuilder(
-                    animation: _textController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _textScaleAnimation.value,
-                        child: Opacity(
-                          opacity: _textController.value,
-                          child: child,
+                          },
+                          frameBuilder: (
+                            context,
+                            child,
+                            frame,
+                            wasSynchronouslyLoaded,
+                          ) {
+                            if (frame == null) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              );
+                            }
+                            return child;
+                          },
+                          filterQuality: FilterQuality.high,
                         ),
-                      );
-                    },
-                    child: const Text(
-                      '💰 Pocket Plan 💰',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.2,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  FadeTransition(
-                    opacity: _inspirationTextAnimation,
-                    child: const Text(
-                      '📊 Planifica, 💰 ahorra y 🏆 vive mejor',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        letterSpacing: 1.1,
+                    const SizedBox(height: 30),
+                    AnimatedBuilder(
+                      animation: _textController,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _textScaleAnimation.value,
+                          child: Opacity(
+                            opacity: _textController.value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        '💰 Pocket Plan 💰',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    FadeTransition(
+                      opacity: _inspirationTextAnimation,
+                      child: const Text(
+                        '📊 Planifica, 💰 ahorra y 🏆 vive mejor',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

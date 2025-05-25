@@ -309,7 +309,7 @@ class GlobalLayout extends StatelessWidget {
             } else {
               switch (index) {
                 case 0:
-                  //Navigator.pushNamed(context, '/graficos');
+                  Navigator.pushNamed(context, '/graficos');
                   break;
                 case 1:
                   break;

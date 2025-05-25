@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'presentation/pages/delete_user_page.dart';
 import 'presentation/pages/editar_simulador_de_ahorros_page.dart';
+import 'presentation/pages/graficos_page.dart';
 import 'presentation/pages/guardar_simulador_de_ahorros_page.dart';
 import 'presentation/pages/guardar_simulador_de_deudas_page.dart';
 import 'presentation/pages/history_cards_screen.dart';
@@ -40,7 +41,7 @@ class MyApp extends StatelessWidget {
       routes: {
         // Rutas de Login
         '/login': (context) => const IniciarSesion(),
-           '/recover_password': (context) => RecoverPasswordPage(),
+        '/recover_password': (context) => RecoverPasswordPage(),
         '/micuenta': (context) => const MiCuentaPage(),
 
         // Rutas de tarjetas
@@ -57,6 +58,8 @@ class MyApp extends StatelessWidget {
         // Rutas de simulador de deudas
         '/seguimineto_deuda': (context) => GuardarSimuladorDeDeudasPage(),
         '/simulador_deuda': (context) => SimuladorDeudasScreen(),
+        //Pantalla de graficos
+        '/graficos': (context) => GraficosScreen(),
       },
 
       // Por si se navega a una ruta inexistente
