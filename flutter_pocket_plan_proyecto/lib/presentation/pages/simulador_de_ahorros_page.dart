@@ -6,6 +6,7 @@ import '../../data/models/repositories/cuota_ahorro_repository.dart';
 import '../../data/models/repositories/simulador_ahorro_repository.dart';
 import '../../data/models/simulador_ahorro.dart';
 import '../../data/models/cuota_ahorro.dart';
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'guardar_simulador_de_ahorros_page.dart';
@@ -604,6 +605,12 @@ class _SimuladorAhorrosWidgetState extends State<SimuladorAhorrosWidget> {
                 );
                 await _cuotaRepo.insertCuotaAhorro(cuota);
               }
+              /* // ====== PROGRAMAR NOTIFICACIONES DEL SIMULADOR DE AHORRO ======
+              final simuladorGuardado = simulador.copyWith(id: simuladorId);
+              await NotificationService().scheduleAhorroNotifications(
+                simuladorGuardado,
+                userId,
+              );*/
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

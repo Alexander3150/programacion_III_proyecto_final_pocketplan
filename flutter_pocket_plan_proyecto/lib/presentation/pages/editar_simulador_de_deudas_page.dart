@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/repositories/cuota_pago_repository.dart';
 import '../../data/models/repositories/simulador_deuda_repository.dart';
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import '../../data/models/simulador_deuda.dart';
 import '../providers/user_provider.dart';
@@ -228,6 +229,14 @@ class _EditarSimuladorDeDeudasContentState
     );
 
     await _repo.updateSimuladorDeuda(deudaActualizada, _userId!);
+    /* await NotificationService().cancelDeudaNotifications(
+      deudaActualizada.id!,
+      _userId!,
+    );
+    await NotificationService().scheduleDeudaNotifications(
+      deudaActualizada,
+      _userId!,
+    );*/
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

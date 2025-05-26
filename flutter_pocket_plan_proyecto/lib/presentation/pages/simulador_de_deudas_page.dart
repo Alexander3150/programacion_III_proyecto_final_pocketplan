@@ -7,6 +7,7 @@ import '../../data/models/repositories/simulador_deuda_repository.dart';
 import '../../data/models/simulador_deuda.dart';
 import '../../data/models/cuota_pago.dart';
 
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'guardar_simulador_de_deudas_page.dart';
@@ -529,6 +530,14 @@ class _SimuladorDeudasWidgetState extends State<SimuladorDeudasWidget> {
               );
               await _cuotaRepo.insertCuotaPago(cuota, userId);
             }
+            /* // ================== PROGRAMAR NOTIFICACIONES DE LA NUEVA DEUDA ===================
+            
+            // Recarga el modelo con el ID que te da la base de datos (si tu modelo lo requiere).
+            final deudaGuardada = deuda.copyWith(id: deudaId);
+            await NotificationService().scheduleDeudaNotifications(
+              deudaGuardada,
+              userId,
+            );*/
 
             if (!mounted) return;
             Navigator.pushReplacement(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/credit_card_model.dart';
 import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 import 'history_cards_screen.dart';
@@ -292,6 +293,19 @@ class _ModificacionDetalleTarjetaCreditoContentState
         setState(() {
           saldoActual = nuevoSaldo;
         });
+
+        // ----------- MANEJO DE NOTIFICACIONES -----------
+        // Cancelar todas las notificaciones anteriores asociadas a esta tarjeta
+        /* await NotificationService().cancelCreditCardNotifications(
+          tarjetaActualizada.id!,
+          tarjetaActualizada.userId,
+        );
+        // Programar las notificaciones nuevas con la tarjeta actualizada
+        await NotificationService().scheduleCreditCardNotifications(
+          tarjetaActualizada,
+          tarjetaActualizada.userId,
+        );*/
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Tarjeta actualizada con éxito'),

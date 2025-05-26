@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/repositories/cuota_ahorro_repository.dart';
 import '../../data/models/repositories/simulador_ahorro_repository.dart';
 import '../../data/models/simulador_ahorro.dart';
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/global_components.dart';
 
@@ -195,6 +196,18 @@ class _EditarSimuladorDeAhorrosContentState
     );
 
     await _repo.updateSimuladorAhorro(ahorroActualizado, _userId!);
+
+    // Primero cancela todas las notificaciones relacionadas a este ahorro
+    /* await NotificationService().cancelAhorroNotifications(
+      ahorroActualizado.id!,
+      _userId!,
+    );
+
+    // Luego programa nuevamente las notificaciones actualizadas
+    await NotificationService().scheduleAhorroNotifications(
+      ahorroActualizado,
+      _userId!,
+    );*/
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

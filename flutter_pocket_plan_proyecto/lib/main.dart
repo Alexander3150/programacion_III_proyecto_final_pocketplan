@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 
+import 'notifications/notification_service.dart';
 import 'presentation/pages/delete_user_page.dart';
-import 'presentation/pages/editar_simulador_de_ahorros_page.dart';
 import 'presentation/pages/graficos_page.dart';
 import 'presentation/pages/guardar_simulador_de_ahorros_page.dart';
 import 'presentation/pages/guardar_simulador_de_deudas_page.dart';
@@ -17,7 +18,14 @@ import 'presentation/pages/simulador_de_ahorros_page.dart';
 import 'presentation/pages/simulador_de_deudas_page.dart';
 import 'presentation/providers/user_provider.dart';
 
-void main() {
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ==== INICIALIZA TODAS LAS NOTIFICACIONES AQUÍ ====
+  await NotificationService().initialize();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => UsuarioProvider(),
@@ -32,12 +40,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-
-      // Ruta inicial al abrir la app
       initialRoute: '/login',
-
-      // Mapa de rutas de la app
       routes: {
         // Rutas de Login
         '/login': (context) => const IniciarSesion(),
@@ -49,16 +54,19 @@ class MyApp extends StatelessWidget {
         '/registrar_tarjeta_credito': (context) => RegisterCreditCardScreen(),
         '/registrar_tarjeta_debito': (context) => RegisterDebitCardScreen(),
 
-        //Rutas de simulador de ahorros
+        // Rutas de simulador de ahorros
         '/retos_de_ahorro': (context) => GuardarSimuladorDeAhorrosPage(),
         '/simulador_ahorro': (context) => SimuladorAhorrosScreen(),
+
         // Rutas de Presupuesto, ingreso de egresos e ingresos
         '/ingreso_egreso': (context) => RegistroMovimientoScreen(),
         '/resumen': (context) => ResumenScreen(),
+
         // Rutas de simulador de deudas
         '/seguimineto_deuda': (context) => GuardarSimuladorDeDeudasPage(),
         '/simulador_deuda': (context) => SimuladorDeudasScreen(),
-        //Pantalla de graficos
+
+        // Pantalla de graficos
         '/graficos': (context) => GraficosScreen(),
       },
 

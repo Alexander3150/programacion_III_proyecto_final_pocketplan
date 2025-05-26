@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/repositories/usuario_repository.dart';
+import '../../notifications/notification_auto_scheduler.dart';
 import '../providers/user_provider.dart';
 import 'create_user_page.dart';
 import 'recover_password_page.dart';
 import 'resumen_page.dart';
 import 'transition_page.dart';
+
+import '../../notifications/notification_service.dart';
+import '../../data/models/repositories/simulador_ahorro_repository.dart';
+import '../../data/models/repositories/simulador_deuda_repository.dart';
+import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/tarjeta_debito_repository.dart';
 
 /// Paleta de colores de la aplicación
 class AppColors {
@@ -26,6 +34,44 @@ class IniciarSesion extends StatefulWidget {
 
   @override
   State<IniciarSesion> createState() => _IniciarSesionState();
+}
+
+Future<bool> pedirPermisoNotificaciones(BuildContext context) async {
+  final status = await Permission.notification.status;
+  if (status.isGranted) {
+    return true;
+  }
+  if (status.isDenied || status.isRestricted) {
+    final result = await Permission.notification.request();
+    if (result.isGranted) return true;
+
+    if (result.isPermanentlyDenied) {
+      // Si el usuario marcó "No volver a preguntar"
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Activa el permiso de notificaciones en Ajustes para que Pocket Plan te ayude a recordar tus ahorros, deudas y pagos de tarjetas. ¡Así nunca olvidarás tus metas!',
+          ),
+
+          action: SnackBarAction(
+            label: 'Abrir Ajustes',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return false;
+    }
+    // Si solo lo negó
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Las notificaciones están deshabilitadas. Actívalas para recibir recordatorios.',
+        ),
+      ),
+    );
+    return false;
+  }
+  return false;
 }
 
 class _IniciarSesionState extends State<IniciarSesion>
@@ -151,12 +197,10 @@ class _IniciarSesionState extends State<IniciarSesion>
     }
   }
 
-  /// Verifica las credenciales del usuario contra la base de datos
   Future<void> _loginUser() async {
     final username = _userController.text.trim();
     final password = _passController.text.trim();
 
-    // Buscar el usuario usando el repositorio y comparar contraseña
     final user = await _usuarioRepository.getUsuarioByUsername(username);
     if (user == null || user.password != password) {
       setState(() {
@@ -164,10 +208,59 @@ class _IniciarSesionState extends State<IniciarSesion>
         _passError = 'Usuario o contraseña incorrectos';
       });
     } else {
-      // Credenciales correctas - navegar a pantalla principal
       Provider.of<UsuarioProvider>(context, listen: false).setUsuario(user);
+
+      // === PIDE EL PERMISO DE NOTIFICACIONES SI ES NECESARIO ===
+      final permisoOk = await pedirPermisoNotificaciones(context);
+      if (!permisoOk) {
+        // Si no lo acepta, puedes continuar pero las notificaciones no llegarán
+        // Puedes poner aquí return; si quieres bloquear el login hasta que acepte
+        // return;
+      }
+
+      // Aquí inicializas e agendas notificaciones del usuario logueado
+      await _programarNotificacionesAutomaticas(user.id!);
+
       _showSuccessAndNavigate();
     }
+  }
+
+  Future<void> _programarNotificacionesAutomaticas(int userId) async {
+    print('══════════════════════════════════════════════════════════════');
+    print('🔔 [Notificaciones] INICIO programación automática');
+    print('👤 [Notificaciones] userId: $userId');
+    print('══════════════════════════════════════════════════════════════');
+
+    // 1. Ya NO es necesario inicializar NotificationService aquí
+    //    Solo asegúrate que está inicializado en main()
+
+    final ahorroRepo = SimuladorAhorroRepository();
+    final deudaRepo = SimuladorDeudaRepository();
+    final creditoRepo = TarjetaCreditoRepository();
+    final debitoRepo = TarjetaDebitoRepository();
+
+    final scheduler = NotificationAutoScheduler(
+      ahorroRepo: ahorroRepo,
+      deudaRepo: deudaRepo,
+      creditoRepo: creditoRepo,
+      debitoRepo: debitoRepo,
+    );
+
+    try {
+      await scheduler.programarNotificacionDiaria(userId);
+      await scheduler.programarNotificacionesAhorro(userId);
+      await scheduler.programarNotificacionesDeuda(userId);
+      await scheduler.programarNotificacionesTarjetas(userId);
+    } catch (e, st) {
+      print('❌ [Notificaciones][ERROR] Falló alguna programación: $e');
+      print('🔎 [Notificaciones][ERROR] StackTrace:\n$st');
+    }
+
+    print('══════════════════════════════════════════════════════════════');
+    print(
+      '🏁 [Notificaciones] FIN programación automática para userId: $userId',
+    );
+    print('══════════════════════════════════════════════════════════════');
   }
 
   /// Muestra mensaje de éxito y navega a la pantalla principal

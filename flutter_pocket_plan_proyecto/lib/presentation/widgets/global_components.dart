@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
 import 'dialogo_filtro_informe.dart';
 import 'dialogo_filtro_informe_ahorros.dart';
@@ -17,7 +18,8 @@ class GlobalLayout extends StatelessWidget {
   final bool mostrarBotonHome;
   final bool mostrarDrawer;
   final bool mostrarBotonInforme;
-  final String tipoInforme; // 'financiero', 'ahorro', 'deuda'
+  final String tipoInforme;
+  final bool mostrarBotonNotificacion;
 
   const GlobalLayout({
     required this.titulo,
@@ -26,8 +28,9 @@ class GlobalLayout extends StatelessWidget {
     this.onTapNav,
     this.mostrarBotonHome = false,
     this.mostrarDrawer = false,
+    this.mostrarBotonNotificacion = false,
     this.mostrarBotonInforme = false,
-    this.tipoInforme = 'financiero', // por defecto
+    this.tipoInforme = 'financiero',
     Key? key,
   }) : super(key: key);
 
@@ -39,13 +42,57 @@ class GlobalLayout extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          titulo,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        titleSpacing: 0,
+        // Usamos Row para mostrar título + ícono a la derecha
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Spacer(), // Espacio a la izquierda
+            Text(
+              titulo,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (mostrarBotonNotificacion)
+              IconButton(
+                tooltip: 'Probar notificación',
+                icon: const Icon(Icons.receipt_long, color: Colors.white),
+                onPressed: () async {
+                  try {
+                    await NotificationService()
+                        .programarNotificacionPruebaProgramada();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(
+                          0xFF76E2C5,
+                        ), // Turquesa pálido
+                        content: const Text(
+                          'Notificación programada para 2 minutos. Verifica tu barra de notificaciones.',
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 13, 117, 111),
+                          ), // Asegura buena legibilidad
+                        ),
+                      ),
+                    );
+                  } catch (e, st) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error al enviar notificación: $e'),
+                      ),
+                    );
+                    print('Error al enviar notificación: $e\n$st');
+                  }
+                },
+              ),
+            if (!mostrarBotonNotificacion)
+              const SizedBox(width: 48), // Ajusta este ancho según el ícono
+            const Spacer(), // Espacio a la derecha
+          ],
         ),
+
         leading:
             mostrarDrawer
                 ? Builder(
@@ -312,7 +359,39 @@ class GlobalLayout extends StatelessWidget {
                   Navigator.pushNamed(context, '/graficos');
                   break;
                 case 1:
+                  try {
+                    // Solo programa la notificación de prueba, sin inicializar nada extra
+                    await NotificationService().showTestNotification();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(
+                          0xFF76E2C5,
+                        ), // Turquesa pálido
+                        content: const Text(
+                          'Notificación instantánea enviada. Verifica tu barra de notificaciones.',
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 13, 117, 111),
+                          ), // Asegura buena legibilidad
+                        ),
+                      ),
+                    );
+                  } catch (e, st) {
+                    // Mostramos la excepción en el SnackBar para debugging
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF76E2C5),
+                        content: Text('Error al enviar notificación: $e'),
+
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+
+                    // También imprime en logcat si estás con el celular conectado a la PC
+                    print('Error al enviar notificación: $e\n$st');
+                  }
                   break;
+
                 case 2:
                   break;
               }
