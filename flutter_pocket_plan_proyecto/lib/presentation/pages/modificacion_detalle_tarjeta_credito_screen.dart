@@ -296,7 +296,7 @@ class _ModificacionDetalleTarjetaCreditoContentState
 
         // ----------- MANEJO DE NOTIFICACIONES -----------
         // Cancelar todas las notificaciones anteriores asociadas a esta tarjeta
-        await NotificationService().cancelCreditCardNotifications(
+        /* await NotificationService().cancelCreditCardNotifications(
           tarjetaActualizada.id!,
           tarjetaActualizada.userId,
         );
@@ -304,7 +304,7 @@ class _ModificacionDetalleTarjetaCreditoContentState
         await NotificationService().scheduleCreditCardNotifications(
           tarjetaActualizada,
           tarjetaActualizada.userId,
-        );
+        );*/
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

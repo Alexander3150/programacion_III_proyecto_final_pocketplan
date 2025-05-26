@@ -530,13 +530,14 @@ class _SimuladorDeudasWidgetState extends State<SimuladorDeudasWidget> {
               );
               await _cuotaRepo.insertCuotaPago(cuota, userId);
             }
-            // ================== PROGRAMAR NOTIFICACIONES DE LA NUEVA DEUDA ===================
+            /* // ================== PROGRAMAR NOTIFICACIONES DE LA NUEVA DEUDA ===================
+            
             // Recarga el modelo con el ID que te da la base de datos (si tu modelo lo requiere).
             final deudaGuardada = deuda.copyWith(id: deudaId);
             await NotificationService().scheduleDeudaNotifications(
               deudaGuardada,
               userId,
-            );
+            );*/
 
             if (!mounted) return;
             Navigator.pushReplacement(

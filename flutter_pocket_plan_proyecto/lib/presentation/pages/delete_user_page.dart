@@ -41,6 +41,7 @@ class MiCuentaPage extends StatelessWidget {
       body: DeleteUserWidget(usuario: user),
       mostrarDrawer: true,
       mostrarBotonHome: true,
+      mostrarBotonNotificacion: true,
     );
   }
 }

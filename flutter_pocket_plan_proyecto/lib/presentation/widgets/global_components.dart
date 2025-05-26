@@ -18,7 +18,8 @@ class GlobalLayout extends StatelessWidget {
   final bool mostrarBotonHome;
   final bool mostrarDrawer;
   final bool mostrarBotonInforme;
-  final String tipoInforme; // 'financiero', 'ahorro', 'deuda'
+  final String tipoInforme;
+  final bool mostrarBotonNotificacion;
 
   const GlobalLayout({
     required this.titulo,
@@ -27,8 +28,9 @@ class GlobalLayout extends StatelessWidget {
     this.onTapNav,
     this.mostrarBotonHome = false,
     this.mostrarDrawer = false,
+    this.mostrarBotonNotificacion = false,
     this.mostrarBotonInforme = false,
-    this.tipoInforme = 'financiero', // por defecto
+    this.tipoInforme = 'financiero',
     Key? key,
   }) : super(key: key);
 
@@ -40,13 +42,57 @@ class GlobalLayout extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          titulo,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        titleSpacing: 0,
+        // Usamos Row para mostrar título + ícono a la derecha
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Spacer(), // Espacio a la izquierda
+            Text(
+              titulo,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (mostrarBotonNotificacion)
+              IconButton(
+                tooltip: 'Probar notificación',
+                icon: const Icon(Icons.receipt_long, color: Colors.white),
+                onPressed: () async {
+                  try {
+                    await NotificationService()
+                        .programarNotificacionPruebaProgramada();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(
+                          0xFF76E2C5,
+                        ), // Turquesa pálido
+                        content: const Text(
+                          'Notificación programada para 2 minutos. Verifica tu barra de notificaciones.',
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 13, 117, 111),
+                          ), // Asegura buena legibilidad
+                        ),
+                      ),
+                    );
+                  } catch (e, st) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error al enviar notificación: $e'),
+                      ),
+                    );
+                    print('Error al enviar notificación: $e\n$st');
+                  }
+                },
+              ),
+            if (!mostrarBotonNotificacion)
+              const SizedBox(width: 48), // Ajusta este ancho según el ícono
+            const Spacer(), // Espacio a la derecha
+          ],
         ),
+
         leading:
             mostrarDrawer
                 ? Builder(
@@ -241,7 +287,70 @@ class GlobalLayout extends StatelessWidget {
           currentIndex: navIndex,
           onTap: (index) async {
             if (index == 2 && mostrarBotonInforme) {
-              // ...tu lógica de informes...
+              Map<String, dynamic>? result;
+              Widget? nextPage;
+              String nextTitle = "Informe";
+
+              switch (tipoInforme) {
+                case 'ahorro':
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInformeAhorros(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe de Ahorros";
+                    nextPage = InformeAhorrosPage(
+                      estado: result['estado'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+                  break;
+                case 'deuda':
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInformeDeudas(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe de Deudas";
+                    nextPage = InformeDeudasPage(
+                      estado: result['estado'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+                  break;
+                default:
+                  result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const DialogoFiltroInforme(),
+                  );
+                  if (result != null) {
+                    nextTitle = "Informe Financiero";
+                    nextPage = InformePage(
+                      tipo: result['tipo'],
+                      periodo: result['periodo'],
+                      dateRange: result['dateRange'],
+                    );
+                  }
+              }
+
+              if (nextPage != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => GlobalLayout(
+                          titulo: nextTitle,
+                          body: nextPage!,
+                          mostrarDrawer: true,
+                          navIndex: 2,
+                          mostrarBotonInforme: true,
+                          tipoInforme: tipoInforme,
+                        ),
+                  ),
+                );
+              }
             } else if (onTapNav != null) {
               onTapNav!(index);
             } else {
@@ -250,20 +359,40 @@ class GlobalLayout extends StatelessWidget {
                   Navigator.pushNamed(context, '/graficos');
                   break;
                 case 1:
-                  // ========== Notificación instantánea de prueba ==========
-                  await NotificationService().init();
-                  await NotificationService().showTestNotification();
+                  try {
+                    // Solo programa la notificación de prueba, sin inicializar nada extra
+                    await NotificationService().showTestNotification();
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Notificación instantánea enviada. Verifica tu barra de notificaciones.',
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(
+                          0xFF76E2C5,
+                        ), // Turquesa pálido
+                        content: const Text(
+                          'Notificación instantánea enviada. Verifica tu barra de notificaciones.',
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 13, 117, 111),
+                          ), // Asegura buena legibilidad
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } catch (e, st) {
+                    // Mostramos la excepción en el SnackBar para debugging
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF76E2C5),
+                        content: Text('Error al enviar notificación: $e'),
+
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+
+                    // También imprime en logcat si estás con el celular conectado a la PC
+                    print('Error al enviar notificación: $e\n$st');
+                  }
                   break;
+
                 case 2:
-                  // Ya cubierto arriba
                   break;
               }
             }

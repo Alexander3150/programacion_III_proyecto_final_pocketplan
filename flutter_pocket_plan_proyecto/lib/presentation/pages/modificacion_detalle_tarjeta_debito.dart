@@ -199,7 +199,7 @@ class _ModificacionDetalleTarjetaDebitoContentState
       );
 
       if (result > 0) {
-        // Cancelar notificaciones anteriores
+        /* // Cancelar notificaciones anteriores
         await NotificationService().cancelDebitCardNotifications(
           tarjetaActualizada.id!,
           tarjetaActualizada.userId,
@@ -208,7 +208,7 @@ class _ModificacionDetalleTarjetaDebitoContentState
         await NotificationService().scheduleDebitCardNotifications(
           tarjetaActualizada,
           tarjetaActualizada.userId,
-        );
+        );*/
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

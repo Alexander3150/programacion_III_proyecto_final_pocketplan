@@ -192,11 +192,11 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
 
       if (id > 0) {
         // ------ PROGRAMAR NOTIFICACIONES ------
-        final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
+        /* final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
         await NotificationService().scheduleDebitCardNotifications(
           tarjetaGuardada,
           _userId!,
-        );
+        );*/
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

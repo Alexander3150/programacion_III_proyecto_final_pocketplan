@@ -89,12 +89,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
 
     if (tarjeta is CreditCard) {
       if (tarjeta.id != null && tarjeta.userId != null) {
-        // Cancela todas las notificaciones asociadas a esta tarjeta de crédito
-        await NotificationService().cancelCreditCardNotifications(
-          tarjeta.id!,
-          tarjeta.userId!,
-        );
-
+        // Elimina la tarjeta de crédito de la base de datos
         eliminado =
             await _creditoRepo.deleteTarjetaCredito(
               tarjeta.id!,
@@ -104,12 +99,7 @@ class _HistoryCardsContentState extends State<_HistoryCardsContent> {
       }
     } else if (tarjeta is DebitCard) {
       if (tarjeta.id != null && tarjeta.userId != null) {
-        // Cancela todas las notificaciones asociadas a esta tarjeta de débito
-        await NotificationService().cancelDebitCardNotifications(
-          tarjeta.id!,
-          tarjeta.userId!,
-        );
-
+        // Elimina la tarjeta de débito de la base de datos
         eliminado =
             await _debitoRepo.deleteTarjetaDebito(
               tarjeta.id!,

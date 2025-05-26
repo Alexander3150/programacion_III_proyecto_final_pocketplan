@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'notifications/notification_service.dart';
 
+import 'package:provider/provider.dart';
+
+import 'notifications/notification_service.dart';
 import 'presentation/pages/delete_user_page.dart';
 import 'presentation/pages/graficos_page.dart';
 import 'presentation/pages/guardar_simulador_de_ahorros_page.dart';
@@ -18,14 +18,13 @@ import 'presentation/pages/simulador_de_ahorros_page.dart';
 import 'presentation/pages/simulador_de_deudas_page.dart';
 import 'presentation/providers/user_provider.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa las zonas horarias para notificaciones precisas
-  tz.initializeTimeZones();
-
-  // Inicializa el servicio de notificaciones
-  await NotificationService().init();
+  // ==== INICIALIZA TODAS LAS NOTIFICACIONES AQUÍ ====
+  await NotificationService().initialize();
 
   runApp(
     ChangeNotifierProvider(
@@ -41,12 +40,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-
-      // Ruta inicial al abrir la app
       initialRoute: '/login',
-
-      // Mapa de rutas de la app
       routes: {
         // Rutas de Login
         '/login': (context) => const IniciarSesion(),

@@ -248,11 +248,11 @@ class _RegisterCreditCardContentState
 
       if (id > 0) {
         // ------ PROGRAMAR NOTIFICACIONES ------
-        final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
+        /*final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
         await NotificationService().scheduleCreditCardNotifications(
           tarjetaGuardada,
           userId,
-        );
+        );*/
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -605,12 +605,12 @@ class _SimuladorAhorrosWidgetState extends State<SimuladorAhorrosWidget> {
                 );
                 await _cuotaRepo.insertCuotaAhorro(cuota);
               }
-              // ====== PROGRAMAR NOTIFICACIONES DEL SIMULADOR DE AHORRO ======
+              /* // ====== PROGRAMAR NOTIFICACIONES DEL SIMULADOR DE AHORRO ======
               final simuladorGuardado = simulador.copyWith(id: simuladorId);
               await NotificationService().scheduleAhorroNotifications(
                 simuladorGuardado,
                 userId,
-              );
+              );*/
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

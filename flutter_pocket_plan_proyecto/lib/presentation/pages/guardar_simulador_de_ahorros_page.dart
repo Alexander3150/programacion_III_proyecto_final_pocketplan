@@ -152,7 +152,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
         );
 
         // --- Elimina notificaciones relacionadas ---
-        final baseId = (eliminado.simulador.id! ?? 10000 + _userId!);
+        /* final baseId = (eliminado.simulador.id! ?? 10000 + _userId!);
         final notificationService = NotificationService();
 
         // DÍA ANTES (9AM y 3PM)
@@ -162,7 +162,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
         // MERO DÍA (9AM y 3PM)
         await notificationService.cancelNotification((baseId * 10 + 1) + 10000);
         await notificationService.cancelNotification((baseId * 10 + 2) + 10000);
-
+*/
         await _loadSimuladores();
       }
 
