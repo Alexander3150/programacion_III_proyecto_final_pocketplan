@@ -632,7 +632,7 @@ No lo compartas con otras personas para proteger tu privacidad.
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   const Text(
-                                                    "Vas a reemplazar **todos los datos actuales** de Pocket Plan con los del archivo que selecciones.",
+                                                    "VSe van a reemplazar **todos los datos actuales** de Pocket Plan con los del archivo que selecciones.",
                                                     style: TextStyle(
                                                       fontSize: 17,
                                                       color: Colors.black87,
@@ -916,10 +916,16 @@ No lo compartas con otras personas para proteger tu privacidad.
                                                           // color: Colors.white, // Este NO es necesario si usas foregroundColor
                                                         ),
                                                       ),
-                                                      onPressed:
-                                                          () => Navigator.pop(
-                                                            context,
-                                                          ),
+                                                      onPressed: () {
+                                                        Navigator.pop(
+                                                          context,
+                                                        ); // Cierra el diálogo
+                                                        Navigator.pushNamedAndRemoveUntil(
+                                                          context,
+                                                          '/login',
+                                                          (_) => false,
+                                                        ); // Navega al login
+                                                      },
                                                     ),
                                                   ),
                                                 ],
