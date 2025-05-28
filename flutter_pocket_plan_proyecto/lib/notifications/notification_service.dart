@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:timezone/timezone.dart' as tz;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -35,6 +34,15 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static bool _timeZoneInitialized = false;
+
+  // --------- NUEVO: Constante para rango de días máximo a programar ---------
+  static const int MAX_DIAS_A_PROGRAMAR = 30;
+
+  bool _estaDentroDeRango(DateTime fechaEvento) {
+    final ahora = DateTime.now();
+    final limite = ahora.add(Duration(days: MAX_DIAS_A_PROGRAMAR));
+    return fechaEvento.isAfter(ahora) && fechaEvento.isBefore(limite);
+  }
 
   /// Inicialización única, llamarla solo una vez en main()
   Future<void> initialize() async {
@@ -221,7 +229,7 @@ class NotificationService {
     }
   }
 
-  // ========== UNIVERSAL SCHEDULER FILTRANDO FECHAS PASADAS ==========
+  // ========== UNIVERSAL SCHEDULER FILTRANDO FECHAS PASADAS Y POR RANGO ==========
 
   Future<void> _tryZonedSchedule({
     required int id,
@@ -236,9 +244,7 @@ class NotificationService {
       tz_data.initializeTimeZones();
       _timeZoneInitialized = true;
     }
-    //final tzScheduled = tz.TZDateTime.from(scheduledDate, tz.local);
-    // final tzNow = tz.TZDateTime.now(tz.local);
-    final location = tz.getLocation('America/Guatemala'); // O la tuya real
+    final location = tz.getLocation('America/Guatemala');
     final tzScheduled = tz.TZDateTime.from(scheduledDate, location);
     final tzNow = tz.TZDateTime.now(location);
     print('[Debug TZ] tzNow: $tzNow | tzScheduled: $tzScheduled');
@@ -257,24 +263,21 @@ class NotificationService {
       return;
     }
 
-    /* await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      safeScheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: payload,
-      matchDateTimeComponents: matchDateTimeComponents,
-    );*/
+    // ----------- FILTRO POR RANGO ANTES DE PROGRAMAR -------------
+    if (!_estaDentroDeRango(safeScheduled)) {
+      print(
+        '[Notificaciones][SKIP] Fecha $safeScheduled fuera de rango, no se programa.',
+      );
+      return;
+    }
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
       title,
       body,
       safeScheduled,
       details,
-      androidScheduleMode:
-          AndroidScheduleMode.exact, // O .inexactAllowWhileIdle
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: payload,
       matchDateTimeComponents: matchDateTimeComponents,
     );
@@ -323,7 +326,7 @@ class NotificationService {
     await _tryZonedSchedule(
       id: 123456,
       title: 'Pocket Plan (Prueba programada)',
-      body: 'Notificación programada de prueba para dentro de 2 minutos.',
+      body: 'Notificación programada de prueba para dentro de 10 segundos.',
       scheduledDate: programadaPara,
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -341,7 +344,7 @@ class NotificationService {
   Future<void> programarNotificacionPruebaRapida() async {
     print('Notificacion Programada Rapida ');
     final now = DateTime.now();
-    final programadaPara = now.add(const Duration(seconds: 20));
+    final programadaPara = now.add(const Duration(minutes: 2));
     print(
       '[Debug Programada] Local: $programadaPara - UTC: ${programadaPara.toUtc()}',
     );
@@ -364,7 +367,7 @@ class NotificationService {
     );
   }
 
-  // --------- 1. Recordatorio diario ---------
+  // --- DIARIA, siempre se programa ---
   Future<void> scheduleDailyTransactionReminder({
     required int hour,
     required int minute,
@@ -390,7 +393,7 @@ class NotificationService {
     );
   }
 
-  // --------- 2. Simulador de Ahorro ---------
+  // --- AHORRO ---
   Future<void> scheduleAhorroNotifications(
     SimuladorAhorro ahorro,
     int userId,
@@ -408,8 +411,7 @@ class NotificationService {
           fecha = fecha.add(const Duration(days: 15));
         }
       }
-      // Filtra SOLO fechas futuras
-      if (fecha.isAfter(DateTime.now())) {
+      if (_estaDentroDeRango(fecha)) {
         await scheduleAhorroReminder(
           id: baseId + i + 1,
           ahorroId: ahorro.id!,
@@ -447,7 +449,7 @@ class NotificationService {
         );
       } else {
         print(
-          '[Notificaciones][SKIP] Fecha de pago $fecha en el pasado, no se programa notificación.',
+          '[Notificaciones][SKIP] Fecha de pago $fecha fuera de rango, no se programa.',
         );
       }
     }
@@ -517,7 +519,7 @@ class NotificationService {
     );
   }
 
-  // --------- 3. Simulador de Deuda ---------
+  // --- DEUDA ---
   Future<void> scheduleDeudaNotifications(
     SimuladorDeuda deuda,
     int userId,
@@ -535,7 +537,7 @@ class NotificationService {
           fecha = fecha.add(const Duration(days: 15));
         }
       }
-      if (fecha.isAfter(DateTime.now())) {
+      if (_estaDentroDeRango(fecha)) {
         await scheduleDeudaReminder(
           id: baseId + i + 1,
           deudaId: deuda.id!,
@@ -573,7 +575,7 @@ class NotificationService {
         );
       } else {
         print(
-          '[Notificaciones][SKIP] Fecha de pago $fecha en el pasado, no se programa notificación.',
+          '[Notificaciones][SKIP] Fecha de pago $fecha fuera de rango, no se programa.',
         );
       }
     }
@@ -652,92 +654,99 @@ class NotificationService {
     final int corteBase = (tarjeta.id ?? 60000 + userId) * 10;
     final int expBase = (tarjeta.id ?? 70000 + userId) * 10;
 
-    // ==================== PAGO ====================
+    // PAGO
     int? diaPago = int.tryParse(tarjeta.pago);
     if (diaPago != null) {
       DateTime fechaPago = _proximoDiaDelMes(diaPago);
-
-      // Día anterior, solo una vez (8 am)
-      await scheduleCreditCardPaymentReminder(
-        id: pagoBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        nombrePropietario: tarjeta.alias,
-        fechaPago: fechaPago,
-        hour: 8,
-        minute: 0,
-      );
-      // Mero día, dos veces (9 am y 3 pm)
-      await scheduleCreditCardPaymentToday(
-        idBase: pagoBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        propietario: tarjeta.alias,
-        fechaPago: fechaPago,
-        hour: 9,
-        minute: 0,
-        extra: 0,
-      );
-      await scheduleCreditCardPaymentToday(
-        idBase: pagoBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        propietario: tarjeta.alias,
-        fechaPago: fechaPago,
-        hour: 15,
-        minute: 0,
-        extra: 1,
-      );
+      if (_estaDentroDeRango(fechaPago)) {
+        await scheduleCreditCardPaymentReminder(
+          id: pagoBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          nombrePropietario: tarjeta.alias,
+          fechaPago: fechaPago,
+          hour: 8,
+          minute: 0,
+        );
+        await scheduleCreditCardPaymentToday(
+          idBase: pagoBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          propietario: tarjeta.alias,
+          fechaPago: fechaPago,
+          hour: 9,
+          minute: 0,
+          extra: 0,
+        );
+        await scheduleCreditCardPaymentToday(
+          idBase: pagoBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          propietario: tarjeta.alias,
+          fechaPago: fechaPago,
+          hour: 15,
+          minute: 0,
+          extra: 1,
+        );
+      } else {
+        print(
+          '[Notificaciones][SKIP] Fecha de pago de tarjeta crédito $fechaPago fuera de rango.',
+        );
+      }
     }
 
-    // ==================== CORTE ====================
+    // CORTE
     int? diaCorte = int.tryParse(tarjeta.corte);
     if (diaCorte != null) {
       DateTime fechaCorte = _proximoDiaDelMes(diaCorte);
-
-      // Día anterior, solo una vez (8 am)
-      await scheduleCreditCardCorteReminder(
-        id: corteBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        nombrePropietario: tarjeta.alias,
-        fechaCorte: fechaCorte,
-        hour: 8,
-        minute: 0,
-      );
-      // Mero día, dos veces (9 am y 3 pm)
-      await scheduleCreditCardCorteToday(
-        idBase: corteBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        propietario: tarjeta.alias,
-        fechaCorte: fechaCorte,
-        hour: 9,
-        minute: 0,
-        extra: 0,
-      );
-      await scheduleCreditCardCorteToday(
-        idBase: corteBase + 1,
-        tarjetaId: tarjeta.id!,
-        userId: userId,
-        banco: tarjeta.banco,
-        propietario: tarjeta.alias,
-        fechaCorte: fechaCorte,
-        hour: 15,
-        minute: 0,
-        extra: 1,
-      );
+      if (_estaDentroDeRango(fechaCorte)) {
+        await scheduleCreditCardCorteReminder(
+          id: corteBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          nombrePropietario: tarjeta.alias,
+          fechaCorte: fechaCorte,
+          hour: 8,
+          minute: 0,
+        );
+        await scheduleCreditCardCorteToday(
+          idBase: corteBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          propietario: tarjeta.alias,
+          fechaCorte: fechaCorte,
+          hour: 9,
+          minute: 0,
+          extra: 0,
+        );
+        await scheduleCreditCardCorteToday(
+          idBase: corteBase + 1,
+          tarjetaId: tarjeta.id!,
+          userId: userId,
+          banco: tarjeta.banco,
+          propietario: tarjeta.alias,
+          fechaCorte: fechaCorte,
+          hour: 15,
+          minute: 0,
+          extra: 1,
+        );
+      } else {
+        print(
+          '[Notificaciones][SKIP] Fecha de corte de tarjeta crédito $fechaCorte fuera de rango.',
+        );
+      }
     }
 
-    // ==================== EXPIRACIÓN ====================
+    // EXPIRACIÓN
     DateTime? fechaExp = _fechaExpiracion(tarjeta.expiracion);
-    if (fechaExp != null && fechaExp.isAfter(DateTime.now())) {
-      // Día anterior, solo una vez (8 am)
+    if (fechaExp != null &&
+        fechaExp.isAfter(DateTime.now()) &&
+        _estaDentroDeRango(fechaExp)) {
       await scheduleCardExpirationReminder(
         id: expBase + 1,
         tarjetaId: tarjeta.id!,
@@ -749,7 +758,6 @@ class NotificationService {
         hour: 8,
         minute: 0,
       );
-      // Mero día, dos veces (9 am y 3 pm)
       await scheduleCardExpirationToday(
         idBase: expBase + 1,
         tarjetaId: tarjeta.id!,
@@ -773,6 +781,10 @@ class NotificationService {
         hour: 15,
         minute: 0,
         extra: 1,
+      );
+    } else {
+      print(
+        '[Notificaciones][SKIP] Fecha de expiración de tarjeta crédito $fechaExp fuera de rango.',
       );
     }
   }
@@ -978,28 +990,34 @@ class NotificationService {
     final int expBase = (tarjeta.id ?? 80000 + userId) * 10;
     DateTime fechaExpiracion = parseExpirationDate(tarjeta.expiracion);
 
-    await scheduleCardExpirationReminder(
-      id: expBase + 1,
-      tarjetaId: tarjeta.id!,
-      userId: userId,
-      tipoTarjeta: 'Débito',
-      banco: tarjeta.banco,
-      nombrePropietario: tarjeta.alias,
-      fechaExpiracion: fechaExpiracion,
-      hour: 8,
-      minute: 0,
-    );
-    await scheduleCardExpirationToday(
-      idBase: expBase + 1,
-      tarjetaId: tarjeta.id!,
-      userId: userId,
-      tipo: 'Débito',
-      banco: tarjeta.banco,
-      propietario: tarjeta.alias,
-      fechaExpiracion: fechaExpiracion,
-      hour: 8,
-      minute: 0,
-    );
+    if (_estaDentroDeRango(fechaExpiracion)) {
+      await scheduleCardExpirationReminder(
+        id: expBase + 1,
+        tarjetaId: tarjeta.id!,
+        userId: userId,
+        tipoTarjeta: 'Débito',
+        banco: tarjeta.banco,
+        nombrePropietario: tarjeta.alias,
+        fechaExpiracion: fechaExpiracion,
+        hour: 8,
+        minute: 0,
+      );
+      await scheduleCardExpirationToday(
+        idBase: expBase + 1,
+        tarjetaId: tarjeta.id!,
+        userId: userId,
+        tipo: 'Débito',
+        banco: tarjeta.banco,
+        propietario: tarjeta.alias,
+        fechaExpiracion: fechaExpiracion,
+        hour: 8,
+        minute: 0,
+      );
+    } else {
+      print(
+        '[Notificaciones][SKIP] Fecha de expiración de tarjeta débito $fechaExpiracion fuera de rango, no se programa.',
+      );
+    }
   }
 
   // ===================== UTILIDADES =====================

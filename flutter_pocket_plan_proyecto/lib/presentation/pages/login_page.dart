@@ -52,7 +52,6 @@ Future<bool> pedirPermisoNotificaciones(BuildContext context) async {
           content: const Text(
             'Activa el permiso de notificaciones en Ajustes para que Pocket Plan te ayude a recordar tus ahorros, deudas y pagos de tarjetas. ¡Así nunca olvidarás tus metas!',
           ),
-
           action: SnackBarAction(
             label: 'Abrir Ajustes',
             onPressed: openAppSettings,
@@ -101,7 +100,9 @@ class _IniciarSesionState extends State<IniciarSesion>
 
   // Estado para el efecto del botón de inicio de sesión
   bool _isButtonPressed = false;
-  // Para el cuando se elimina la cuenta
+
+  // --- NUEVO: Control de estado para login en progreso ---
+  bool _isLoading = false;
 
   final UsuarioRepository _usuarioRepository = UsuarioRepository();
 
@@ -147,7 +148,6 @@ class _IniciarSesionState extends State<IniciarSesion>
 
   @override
   void dispose() {
-    /// Limpieza de recursos para evitar memory leaks:
     _animationController.dispose();
     _userController.dispose();
     _passController.dispose();
@@ -198,6 +198,9 @@ class _IniciarSesionState extends State<IniciarSesion>
   }
 
   Future<void> _loginUser() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
     final username = _userController.text.trim();
     final password = _passController.text.trim();
 
@@ -206,6 +209,7 @@ class _IniciarSesionState extends State<IniciarSesion>
       setState(() {
         _userError = null;
         _passError = 'Usuario o contraseña incorrectos';
+        _isLoading = false;
       });
     } else {
       Provider.of<UsuarioProvider>(context, listen: false).setUsuario(user);
@@ -213,27 +217,22 @@ class _IniciarSesionState extends State<IniciarSesion>
       // === PIDE EL PERMISO DE NOTIFICACIONES SI ES NECESARIO ===
       final permisoOk = await pedirPermisoNotificaciones(context);
       if (!permisoOk) {
-        // Si no lo acepta, puedes continuar pero las notificaciones no llegarán
-        // Puedes poner aquí return; si quieres bloquear el login hasta que acepte
-        // return;
+        setState(() => _isLoading = false);
+        // return; // Puedes desbloquear aquí si decides bloquear el acceso
       }
 
       // Aquí inicializas e agendas notificaciones del usuario logueado
       await _programarNotificacionesAutomaticas(user.id!);
 
       _showSuccessAndNavigate();
+      setState(
+        () => _isLoading = false,
+      ); // No necesario si navegas y no regresas
     }
   }
 
   Future<void> _programarNotificacionesAutomaticas(int userId) async {
-    print('══════════════════════════════════════════════════════════════');
-    print('🔔 [Notificaciones] INICIO programación automática');
-    print('👤 [Notificaciones] userId: $userId');
-    print('══════════════════════════════════════════════════════════════');
-
-    // 1. Ya NO es necesario inicializar NotificationService aquí
-    //    Solo asegúrate que está inicializado en main()
-
+    // ... (igual que tu función actual, no hace falta cambiar nada aquí)
     final ahorroRepo = SimuladorAhorroRepository();
     final deudaRepo = SimuladorDeudaRepository();
     final creditoRepo = TarjetaCreditoRepository();
@@ -255,12 +254,6 @@ class _IniciarSesionState extends State<IniciarSesion>
       print('❌ [Notificaciones][ERROR] Falló alguna programación: $e');
       print('🔎 [Notificaciones][ERROR] StackTrace:\n$st');
     }
-
-    print('══════════════════════════════════════════════════════════════');
-    print(
-      '🏁 [Notificaciones] FIN programación automática para userId: $userId',
-    );
-    print('══════════════════════════════════════════════════════════════');
   }
 
   /// Muestra mensaje de éxito y navega a la pantalla principal
@@ -389,67 +382,93 @@ class _IniciarSesionState extends State<IniciarSesion>
                 ),
                 SizedBox(height: isSmallScreen ? 30 : 50),
 
-                /// Botón de inicio de sesión con efecto
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTapDown: (_) => setState(() => _isButtonPressed = true),
-                    onTapUp: (_) => setState(() => _isButtonPressed = false),
-                    onTapCancel: () => setState(() => _isButtonPressed = false),
-                    onTap: _validateFields,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      transform:
-                          Matrix4.identity()..translate(
-                            0.0,
-                            _isButtonPressed ? 2.0 : 0.0,
-                            _isButtonPressed ? -2.0 : 0.0,
+                /// Botón de inicio de sesión con loader
+                IgnorePointer(
+                  ignoring: _isLoading,
+                  child: Opacity(
+                    opacity: _isLoading ? 0.6 : 1.0,
+                    child: MouseRegion(
+                      cursor:
+                          _isLoading
+                              ? SystemMouseCursors.forbidden
+                              : SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTapDown:
+                            (_) => setState(() => _isButtonPressed = true),
+                        onTapUp:
+                            (_) => setState(() => _isButtonPressed = false),
+                        onTapCancel:
+                            () => setState(() => _isButtonPressed = false),
+                        onTap: _isLoading ? null : _validateFields,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 100),
+                          transform:
+                              Matrix4.identity()..translate(
+                                0.0,
+                                _isButtonPressed ? 2.0 : 0.0,
+                                _isButtonPressed ? -2.0 : 0.0,
+                              ),
+                          width:
+                              isSmallScreen
+                                  ? size.width * 0.8
+                                  : size.width * 0.5,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            gradient: const LinearGradient(
+                              colors: [AppColors.secondary, AppColors.accent],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow:
+                                _isButtonPressed
+                                    ? [
+                                      BoxShadow(
+                                        color: AppColors.buttonShadow,
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                    : [
+                                      BoxShadow(
+                                        color: AppColors.buttonShadow,
+                                        blurRadius: 12,
+                                        spreadRadius: 2,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                           ),
-                      width:
-                          isSmallScreen ? size.width * 0.8 : size.width * 0.5,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        gradient: const LinearGradient(
-                          colors: [AppColors.secondary, AppColors.accent],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow:
-                            _isButtonPressed
-                                ? [
-                                  BoxShadow(
-                                    color: AppColors.buttonShadow,
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                                : [
-                                  BoxShadow(
-                                    color: AppColors.buttonShadow,
-                                    blurRadius: 12,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isSmallScreen ? 16 : 20,
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Iniciar Sesión',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 18 : 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textLight,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 2,
-                                  offset: const Offset(1, 1),
-                                ),
-                              ],
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: isSmallScreen ? 16 : 20,
+                            ),
+                            child: Center(
+                              child:
+                                  _isLoading
+                                      ? const SizedBox(
+                                        width: 26,
+                                        height: 26,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 3,
+                                        ),
+                                      )
+                                      : Text(
+                                        'Iniciar Sesión',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 18 : 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textLight,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(
+                                                0.2,
+                                              ),
+                                              blurRadius: 2,
+                                              offset: const Offset(1, 1),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                             ),
                           ),
                         ),
@@ -468,14 +487,18 @@ class _IniciarSesionState extends State<IniciarSesion>
                       icon: Icons.person_add_alt_1,
                       text: 'Crear Usuario',
                       isSmallScreen: isSmallScreen,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CrearUsuarioScreen(),
-                          ),
-                        );
-                      },
+                      onPressed:
+                          _isLoading
+                              ? null
+                              : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => const CrearUsuarioScreen(),
+                                  ),
+                                );
+                              },
                     ),
                     SizedBox(width: 5), // Espaciado entre botones
                     // Botón para recuperar contraseña
@@ -483,14 +506,19 @@ class _IniciarSesionState extends State<IniciarSesion>
                       icon: Icons.lock_reset,
                       text: 'Recuperar contraseña',
                       isSmallScreen: isSmallScreen,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RecoverPasswordPage(),
-                          ),
-                        );
-                      },
+                      onPressed:
+                          _isLoading
+                              ? null
+                              : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const RecoverPasswordPage(),
+                                  ),
+                                );
+                              },
                     ),
                   ],
                 ),
@@ -728,10 +756,13 @@ class _IniciarSesionState extends State<IniciarSesion>
     required IconData icon,
     required String text,
     required bool isSmallScreen,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor:
+          (onPressed == null)
+              ? SystemMouseCursors.forbidden
+              : SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),

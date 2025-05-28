@@ -38,6 +38,37 @@ class _DialogoFiltroInformeState extends State<DialogoFiltroInforme> {
     _dateRange = widget.rangoActual;
   }
 
+  /// Devuelve el rango de fechas correspondiente al periodo seleccionado.
+  DateTimeRange _getRangoPorPeriodo(String periodo) {
+    final now = DateTime.now();
+    switch (periodo) {
+      case 'Día':
+        final start = DateTime(now.year, now.month, now.day);
+        final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+        return DateTimeRange(start: start, end: end);
+      case 'Semana':
+        // Primer día de la semana (lunes)
+        final start = now.subtract(Duration(days: now.weekday - 1));
+        final end = start.add(const Duration(days: 6));
+        final startDate = DateTime(start.year, start.month, start.day);
+        final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
+        return DateTimeRange(start: startDate, end: endDate);
+      case 'Mes':
+        final start = DateTime(now.year, now.month, 1);
+        // El "0" del mes siguiente da el último día del mes actual
+        final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+        return DateTimeRange(start: start, end: end);
+      case 'Año':
+        final start = DateTime(now.year, 1, 1);
+        final end = DateTime(now.year, 12, 31, 23, 59, 59, 999);
+        return DateTimeRange(start: start, end: end);
+      default:
+        // Personalizado o no seleccionado
+        return _dateRange ??
+            DateTimeRange(start: now, end: now); // fallback seguro
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -196,10 +227,16 @@ class _DialogoFiltroInformeState extends State<DialogoFiltroInforme> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           ),
           onPressed: () {
+            DateTimeRange? range;
+            if (_periodo != 'Personalizado') {
+              range = _getRangoPorPeriodo(_periodo);
+            } else {
+              range = _dateRange;
+            }
             Navigator.pop(context, {
               'tipo': _tipo,
               'periodo': _periodo,
-              'dateRange': _dateRange,
+              'dateRange': range,
             });
           },
         ),

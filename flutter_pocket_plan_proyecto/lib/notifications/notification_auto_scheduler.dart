@@ -3,7 +3,6 @@ import '../data/models/repositories/simulador_ahorro_repository.dart';
 import '../data/models/repositories/simulador_deuda_repository.dart';
 import '../data/models/repositories/tarjeta_credito_repository.dart';
 import '../data/models/repositories/tarjeta_debito_repository.dart';
-import 'package:flutter/material.dart';
 
 class NotificationAutoScheduler {
   final SimuladorAhorroRepository ahorroRepo;
