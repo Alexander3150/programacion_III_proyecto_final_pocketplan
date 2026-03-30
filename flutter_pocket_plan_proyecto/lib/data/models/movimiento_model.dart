@@ -11,6 +11,11 @@ class Movimiento {
   final String? tipoTarjeta; // 'Débito' o 'Crédito'
   final String? opcionPago; // 'Al contado' o 'A cuotas', solo crédito
   final int? cuotas; // solo si opcionPago == 'A cuotas'
+  final String? origen; // 'manual' o 'auto'
+  final String? smsKey;
+  final String? smsSender;
+  final String? smsAuth;
+  final String? smsRaw;
   final DateTime? createdAt;
 
   Movimiento({
@@ -26,6 +31,11 @@ class Movimiento {
     this.tipoTarjeta,
     this.opcionPago,
     this.cuotas,
+    this.origen,
+    this.smsKey,
+    this.smsSender,
+    this.smsAuth,
+    this.smsRaw,
     this.createdAt,
   });
 
@@ -43,6 +53,11 @@ class Movimiento {
     String? tipoTarjeta,
     String? opcionPago,
     int? cuotas,
+    String? origen,
+    String? smsKey,
+    String? smsSender,
+    String? smsAuth,
+    String? smsRaw,
     DateTime? createdAt,
   }) {
     return Movimiento(
@@ -58,6 +73,11 @@ class Movimiento {
       tipoTarjeta: tipoTarjeta ?? this.tipoTarjeta,
       opcionPago: opcionPago ?? this.opcionPago,
       cuotas: cuotas ?? this.cuotas,
+      origen: origen ?? this.origen,
+      smsKey: smsKey ?? this.smsKey,
+      smsSender: smsSender ?? this.smsSender,
+      smsAuth: smsAuth ?? this.smsAuth,
+      smsRaw: smsRaw ?? this.smsRaw,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -76,6 +96,11 @@ class Movimiento {
       'tipo_tarjeta': tipoTarjeta,
       'opcion_pago': opcionPago,
       'cuotas': cuotas,
+      'origen': origen,
+      'sms_key': smsKey,
+      'sms_sender': smsSender,
+      'sms_auth': smsAuth,
+      'sms_raw': smsRaw,
       'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
     };
   }
@@ -94,6 +119,11 @@ class Movimiento {
       tipoTarjeta: map['tipo_tarjeta'] as String?,
       opcionPago: map['opcion_pago'] as String?,
       cuotas: map['cuotas'] as int?,
+      origen: map['origen'] as String?,
+      smsKey: map['sms_key'] as String?,
+      smsSender: map['sms_sender'] as String?,
+      smsAuth: map['sms_auth'] as String?,
+      smsRaw: map['sms_raw'] as String?,
       createdAt:
           map['created_at'] != null ? DateTime.parse(map['created_at']) : null,
     );

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -88,7 +88,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
     setState(() => _isLoading = true);
 
     if (_userId != null) {
-      // 1. Obtén los simuladores normales
+      // 1. ObtÃ©n los simuladores normales
       final simuladores = await _repository.getSimuladoresAhorroByUser(
         _userId!,
       );
@@ -113,7 +113,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
         return a.progreso.compareTo(b.progreso);
       });
 
-      simuladoresGuardados = progresos; // <- ¡ESTE debe ser progresos!
+      simuladoresGuardados = progresos; // <- Â¡ESTE debe ser progresos!
     } else {
       simuladoresGuardados = [];
     }
@@ -152,17 +152,10 @@ class _GuardarSimuladorDeAhorrosWidgetState
         );
 
         // --- Elimina notificaciones relacionadas ---
-        /* final baseId = (eliminado.simulador.id! ?? 10000 + _userId!);
-        final notificationService = NotificationService();
-
-        // DÍA ANTES (9AM y 3PM)
-        await notificationService.cancelNotification(baseId * 10 + 1);
-        await notificationService.cancelNotification(baseId * 10 + 2);
-
-        // MERO DÍA (9AM y 3PM)
-        await notificationService.cancelNotification((baseId * 10 + 1) + 10000);
-        await notificationService.cancelNotification((baseId * 10 + 2) + 10000);
-*/
+        await NotificationService().cancelAhorroNotificationsForSimulador(
+          eliminado.simulador,
+          _userId!,
+        );
         await _loadSimuladores();
       }
 
@@ -191,7 +184,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
                   style: TextStyle(color: AppColors.textDark),
                 ),
                 content: const Text(
-                  '¿Estás seguro de que deseas eliminar este simulador?',
+                  'Â¿EstÃ¡s seguro de que deseas eliminar este simulador?',
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -235,7 +228,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
 
     if (actualizado == true) {
       await _loadSimuladores();
-      _mostrarMensajeEmergente('¡Simulador actualizado!', AppColors.success);
+      _mostrarMensajeEmergente('Â¡Simulador actualizado!', AppColors.success);
     }
   }
 
@@ -341,7 +334,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header con ícono y objetivo
+                    // Header con Ã­cono y objetivo
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -428,7 +421,7 @@ class _GuardarSimuladorDeAhorrosWidgetState
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Botones de acción
+                    // Botones de acciÃ³n
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [

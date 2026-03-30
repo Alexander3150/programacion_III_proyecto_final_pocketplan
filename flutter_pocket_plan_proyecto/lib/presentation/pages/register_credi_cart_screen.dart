@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/credit_card_model.dart';
+import '../../data/models/sms_auto_rule.dart';
 import '../../data/models/repositories/tarjeta_credito_repository.dart';
+import '../../data/models/repositories/sms_auto_rule_repository.dart';
 
 import '../../notifications/notification_service.dart';
 import '../providers/user_provider.dart';
@@ -68,6 +70,15 @@ class _RegisterCreditCardContentState
       TextEditingController();
   final TextEditingController _fechaCorteController = TextEditingController();
   final TextEditingController _fechaPagoController = TextEditingController();
+  final TextEditingController _smsSenderController = TextEditingController(
+    text: '+2424',
+  );
+  final TextEditingController _smsPrefixController = TextEditingController(
+    text: 'BiMovil:',
+  );
+  final TextEditingController _smsIdentifierController =
+      TextEditingController();
+  final TextEditingController _smsAliasController = TextEditingController();
 
   // Variables de estado y validación
   String tipoSeleccionado = 'Crédito';
@@ -78,6 +89,11 @@ class _RegisterCreditCardContentState
   String? _errorFechaExpiracion;
   String? _errorFechaCorte;
   String? _errorFechaPago;
+  String? _errorSmsSender;
+  String? _errorSmsPrefix;
+  String? _errorSmsIdentifier;
+  String _smsIdentifierType = 'cuenta';
+  bool _autoSmsEnabled = false;
 
   // FocusNodes para manejar el enfoque
   final FocusNode _bancoFocusNode = FocusNode();
@@ -87,14 +103,20 @@ class _RegisterCreditCardContentState
   final FocusNode _fechaExpiracionFocusNode = FocusNode();
   final FocusNode _fechaCorteFocusNode = FocusNode();
   final FocusNode _fechaPagoFocusNode = FocusNode();
+  final FocusNode _smsSenderFocusNode = FocusNode();
+  final FocusNode _smsPrefixFocusNode = FocusNode();
+  final FocusNode _smsIdentifierFocusNode = FocusNode();
+  final FocusNode _smsAliasFocusNode = FocusNode();
 
   late final TarjetaCreditoRepository _creditCardRepository;
+  late final SmsAutoRuleRepository _smsRuleRepository;
 
   @override
   void initState() {
     super.initState();
     _setupFocusListeners();
     _creditCardRepository = TarjetaCreditoRepository(); // Instancia aquí
+    _smsRuleRepository = SmsAutoRuleRepository();
   }
 
   void _setupFocusListeners() {
@@ -105,6 +127,10 @@ class _RegisterCreditCardContentState
     _fechaExpiracionFocusNode.addListener(() => setState(() {}));
     _fechaCorteFocusNode.addListener(() => setState(() {}));
     _fechaPagoFocusNode.addListener(() => setState(() {}));
+    _smsSenderFocusNode.addListener(() => setState(() {}));
+    _smsPrefixFocusNode.addListener(() => setState(() {}));
+    _smsIdentifierFocusNode.addListener(() => setState(() {}));
+    _smsAliasFocusNode.addListener(() => setState(() {}));
   }
 
   @override
@@ -116,6 +142,10 @@ class _RegisterCreditCardContentState
     _fechaExpiracionController.dispose();
     _fechaCorteController.dispose();
     _fechaPagoController.dispose();
+    _smsSenderController.dispose();
+    _smsPrefixController.dispose();
+    _smsIdentifierController.dispose();
+    _smsAliasController.dispose();
     super.dispose();
   }
 
@@ -217,6 +247,28 @@ class _RegisterCreditCardContentState
       if (_fechaPagoController.text.isEmpty) {
         _errorFechaPago = 'Ingrese el día de pago';
       }
+
+      if (_autoSmsEnabled) {
+        if (_smsSenderController.text.trim().isEmpty) {
+          _errorSmsSender = 'Ingrese el remitente';
+        } else {
+          _errorSmsSender = null;
+        }
+        if (_smsPrefixController.text.trim().isEmpty) {
+          _errorSmsPrefix = 'Ingrese el prefijo';
+        } else {
+          _errorSmsPrefix = null;
+        }
+        if (_smsIdentifierController.text.trim().isEmpty) {
+          _errorSmsIdentifier = 'Ingrese el identificador';
+        } else {
+          _errorSmsIdentifier = null;
+        }
+      } else {
+        _errorSmsSender = null;
+        _errorSmsPrefix = null;
+        _errorSmsIdentifier = null;
+      }
     });
   }
 
@@ -229,7 +281,10 @@ class _RegisterCreditCardContentState
         _errorLimite == null &&
         _errorFechaExpiracion == null &&
         _errorFechaCorte == null &&
-        _errorFechaPago == null) {
+        _errorFechaPago == null &&
+        _errorSmsSender == null &&
+        _errorSmsPrefix == null &&
+        _errorSmsIdentifier == null) {
       final userId = getCurrentUserId(context);
 
       final nuevaTarjeta = CreditCard(
@@ -247,6 +302,25 @@ class _RegisterCreditCardContentState
       final id = await _creditCardRepository.insertTarjetaCredito(nuevaTarjeta);
 
       if (id > 0) {
+        if (_autoSmsEnabled) {
+          final rule = SmsAutoRule(
+            userId: userId,
+            tarjetaId: id,
+            tipoTarjeta: 'Crédito',
+            enabled: true,
+            sender: _smsSenderController.text.trim(),
+            prefix: _smsPrefixController.text.trim(),
+            identifier: _smsIdentifierController.text.trim().toUpperCase(),
+            identifierType: _smsIdentifierType,
+            alias:
+                _smsAliasController.text.trim().isEmpty
+                    ? _aliasController.text.trim()
+                    : _smsAliasController.text.trim(),
+            bank: _bancoController.text.trim(),
+          );
+          await _smsRuleRepository.insertRule(rule);
+        }
+
         // ------ PROGRAMAR NOTIFICACIONES ------
         /*final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
         await NotificationService().scheduleCreditCardNotifications(
@@ -290,6 +364,10 @@ class _RegisterCreditCardContentState
     _fechaExpiracionController.clear();
     _fechaCorteController.clear();
     _fechaPagoController.clear();
+    _smsSenderController.text = '+2424';
+    _smsPrefixController.text = 'BiMovil:';
+    _smsIdentifierController.clear();
+    _smsAliasController.clear();
     setState(() {
       _errorBanco = null;
       _errorNumeroTarjeta = null;
@@ -298,6 +376,10 @@ class _RegisterCreditCardContentState
       _errorFechaExpiracion = null;
       _errorFechaCorte = null;
       _errorFechaPago = null;
+      _errorSmsSender = null;
+      _errorSmsPrefix = null;
+      _errorSmsIdentifier = null;
+      _autoSmsEnabled = false;
     });
   }
 
@@ -500,6 +582,8 @@ class _RegisterCreditCardContentState
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              _buildSmsConfigSection(),
               const SizedBox(height: 32),
               // Botón de guardar
               Center(
@@ -837,6 +921,98 @@ class _RegisterCreditCardContentState
             },
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildSmsConfigSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Transacciones automáticas por SMS',
+                style: TextStyle(
+                  color: CardColors.textDark,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Switch(
+              value: _autoSmsEnabled,
+              onChanged: (value) => setState(() => _autoSmsEnabled = value),
+              activeColor: CardColors.secondary,
+            ),
+          ],
+        ),
+        if (_autoSmsEnabled) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Configura cómo reconocer los mensajes del banco para esta tarjeta.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsSenderController,
+            label: 'Remitente del SMS',
+            hint: 'Ej. +2424',
+            icon: Icons.message,
+            errorText: _errorSmsSender,
+            focusNode: _smsSenderFocusNode,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsPrefixController,
+            label: 'Prefijo del mensaje',
+            hint: 'Ej. BiMovil:',
+            icon: Icons.short_text,
+            errorText: _errorSmsPrefix,
+            focusNode: _smsPrefixFocusNode,
+            keyboardType: TextInputType.text,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsIdentifierController,
+            label: 'Identificador en el SMS',
+            hint: 'Ej. BICHEQUE1',
+            icon: Icons.tag,
+            errorText: _errorSmsIdentifier,
+            focusNode: _smsIdentifierFocusNode,
+            keyboardType: TextInputType.text,
+            helperText:
+                'Este identificador aparece como Cuenta o Tarjeta en el SMS.',
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _smsIdentifierType,
+            decoration: const InputDecoration(
+              labelText: 'Tipo de identificador',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'cuenta', child: Text('Cuenta')),
+              DropdownMenuItem(value: 'tarjeta', child: Text('Tarjeta')),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _smsIdentifierType = v);
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsAliasController,
+            label: 'Alias de la regla (opcional)',
+            hint: 'Ej. Banco Industrial - BICHEQUE1',
+            icon: Icons.edit_note,
+            errorText: null,
+            focusNode: _smsAliasFocusNode,
+            keyboardType: TextInputType.text,
+          ),
+        ],
       ],
     );
   }

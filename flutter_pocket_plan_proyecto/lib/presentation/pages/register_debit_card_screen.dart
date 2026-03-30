@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/debit_card_model.dart';
+import '../../data/models/sms_auto_rule.dart';
 import '../../data/models/repositories/tarjeta_debito_repository.dart';
+import '../../data/models/repositories/sms_auto_rule_repository.dart';
 
 import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
@@ -57,19 +59,38 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
   final TextEditingController _aliasController = TextEditingController();
   final TextEditingController _fechaExpiracionController =
       TextEditingController();
+  final TextEditingController _smsSenderController = TextEditingController(
+    text: '+2424',
+  );
+  final TextEditingController _smsPrefixController = TextEditingController(
+    text: 'BiMovil:',
+  );
+  final TextEditingController _smsIdentifierController =
+      TextEditingController();
+  final TextEditingController _smsAliasController = TextEditingController();
 
   String tipoSeleccionado = 'Débito';
   String? _errorBanco;
   String? _errorNumeroTarjeta;
   String? _errorAlias;
   String? _errorFechaExpiracion;
+  String? _errorSmsSender;
+  String? _errorSmsPrefix;
+  String? _errorSmsIdentifier;
+  String _smsIdentifierType = 'cuenta';
+  bool _autoSmsEnabled = false;
 
   final FocusNode _bancoFocusNode = FocusNode();
   final FocusNode _numeroTarjetaFocusNode = FocusNode();
   final FocusNode _aliasFocusNode = FocusNode();
   final FocusNode _fechaExpiracionFocusNode = FocusNode();
+  final FocusNode _smsSenderFocusNode = FocusNode();
+  final FocusNode _smsPrefixFocusNode = FocusNode();
+  final FocusNode _smsIdentifierFocusNode = FocusNode();
+  final FocusNode _smsAliasFocusNode = FocusNode();
 
   late final TarjetaDebitoRepository _debitCardRepository;
+  late final SmsAutoRuleRepository _smsRuleRepository;
   int? _userId;
 
   @override
@@ -77,6 +98,7 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     super.initState();
     _setupFocusListeners();
     _debitCardRepository = TarjetaDebitoRepository();
+    _smsRuleRepository = SmsAutoRuleRepository();
   }
 
   void _setupFocusListeners() {
@@ -84,6 +106,10 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     _numeroTarjetaFocusNode.addListener(() => setState(() {}));
     _aliasFocusNode.addListener(() => setState(() {}));
     _fechaExpiracionFocusNode.addListener(() => setState(() {}));
+    _smsSenderFocusNode.addListener(() => setState(() {}));
+    _smsPrefixFocusNode.addListener(() => setState(() {}));
+    _smsIdentifierFocusNode.addListener(() => setState(() {}));
+    _smsAliasFocusNode.addListener(() => setState(() {}));
   }
 
   @override
@@ -99,6 +125,10 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     _numeroTarjetaController.dispose();
     _aliasController.dispose();
     _fechaExpiracionController.dispose();
+    _smsSenderController.dispose();
+    _smsPrefixController.dispose();
+    _smsIdentifierController.dispose();
+    _smsAliasController.dispose();
     super.dispose();
   }
 
@@ -162,6 +192,28 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
       if (_fechaExpiracionController.text.isEmpty) {
         _errorFechaExpiracion = 'Ingrese la fecha de expiración';
       }
+
+      if (_autoSmsEnabled) {
+        if (_smsSenderController.text.trim().isEmpty) {
+          _errorSmsSender = 'Ingrese el remitente';
+        } else {
+          _errorSmsSender = null;
+        }
+        if (_smsPrefixController.text.trim().isEmpty) {
+          _errorSmsPrefix = 'Ingrese el prefijo';
+        } else {
+          _errorSmsPrefix = null;
+        }
+        if (_smsIdentifierController.text.trim().isEmpty) {
+          _errorSmsIdentifier = 'Ingrese el identificador';
+        } else {
+          _errorSmsIdentifier = null;
+        }
+      } else {
+        _errorSmsSender = null;
+        _errorSmsPrefix = null;
+        _errorSmsIdentifier = null;
+      }
     });
   }
 
@@ -171,7 +223,10 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     if (_errorBanco == null &&
         _errorNumeroTarjeta == null &&
         _errorAlias == null &&
-        _errorFechaExpiracion == null) {
+        _errorFechaExpiracion == null &&
+        _errorSmsSender == null &&
+        _errorSmsPrefix == null &&
+        _errorSmsIdentifier == null) {
       if (_userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -191,6 +246,24 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
       final id = await _debitCardRepository.insertTarjetaDebito(nuevaTarjeta);
 
       if (id > 0) {
+        if (_autoSmsEnabled) {
+          final rule = SmsAutoRule(
+            userId: _userId!,
+            tarjetaId: id,
+            tipoTarjeta: 'Débito',
+            enabled: true,
+            sender: _smsSenderController.text.trim(),
+            prefix: _smsPrefixController.text.trim(),
+            identifier: _smsIdentifierController.text.trim().toUpperCase(),
+            identifierType: _smsIdentifierType,
+            alias:
+                _smsAliasController.text.trim().isEmpty
+                    ? _aliasController.text.trim()
+                    : _smsAliasController.text.trim(),
+            bank: _bancoController.text.trim(),
+          );
+          await _smsRuleRepository.insertRule(rule);
+        }
         // ------ PROGRAMAR NOTIFICACIONES ------
         /* final tarjetaGuardada = nuevaTarjeta.copyWith(id: id);
         await NotificationService().scheduleDebitCardNotifications(
@@ -229,11 +302,19 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
     _numeroTarjetaController.clear();
     _aliasController.clear();
     _fechaExpiracionController.clear();
+    _smsSenderController.text = '+2424';
+    _smsPrefixController.text = 'BiMovil:';
+    _smsIdentifierController.clear();
+    _smsAliasController.clear();
     setState(() {
       _errorBanco = null;
       _errorNumeroTarjeta = null;
       _errorAlias = null;
       _errorFechaExpiracion = null;
+      _errorSmsSender = null;
+      _errorSmsPrefix = null;
+      _errorSmsIdentifier = null;
+      _autoSmsEnabled = false;
     });
   }
 
@@ -389,6 +470,8 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
 
               // Campo de fecha de expiración con tooltip y entrada manual
               _buildExpirationDateField(),
+              const SizedBox(height: 24),
+              _buildSmsConfigSection(),
               const SizedBox(height: 32),
 
               // Botón de guardar
@@ -635,6 +718,98 @@ class _RegisterDebitCardContentState extends State<_RegisterDebitCardContent> {
             },
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildSmsConfigSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Transacciones automáticas por SMS',
+                style: TextStyle(
+                  color: DebitCardColors.textDark,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Switch(
+              value: _autoSmsEnabled,
+              onChanged: (value) => setState(() => _autoSmsEnabled = value),
+              activeColor: DebitCardColors.secondary,
+            ),
+          ],
+        ),
+        if (_autoSmsEnabled) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Configura cómo reconocer los mensajes del banco para esta tarjeta.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsSenderController,
+            label: 'Remitente del SMS',
+            hint: 'Ej. +2424',
+            icon: Icons.message,
+            errorText: _errorSmsSender,
+            focusNode: _smsSenderFocusNode,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsPrefixController,
+            label: 'Prefijo del mensaje',
+            hint: 'Ej. BiMovil:',
+            icon: Icons.short_text,
+            errorText: _errorSmsPrefix,
+            focusNode: _smsPrefixFocusNode,
+            keyboardType: TextInputType.text,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsIdentifierController,
+            label: 'Identificador en el SMS',
+            hint: 'Ej. BICHEQUE1',
+            icon: Icons.tag,
+            errorText: _errorSmsIdentifier,
+            focusNode: _smsIdentifierFocusNode,
+            keyboardType: TextInputType.text,
+            helperText:
+                'Este identificador aparece como Cuenta o Tarjeta en el SMS.',
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _smsIdentifierType,
+            decoration: const InputDecoration(
+              labelText: 'Tipo de identificador',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'cuenta', child: Text('Cuenta')),
+              DropdownMenuItem(value: 'tarjeta', child: Text('Tarjeta')),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _smsIdentifierType = v);
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildTextFieldWithIcon(
+            controller: _smsAliasController,
+            label: 'Alias de la regla (opcional)',
+            hint: 'Ej. Banco Industrial - BICHEQUE1',
+            icon: Icons.edit_note,
+            errorText: null,
+            focusNode: _smsAliasFocusNode,
+            keyboardType: TextInputType.text,
+          ),
+        ],
       ],
     );
   }

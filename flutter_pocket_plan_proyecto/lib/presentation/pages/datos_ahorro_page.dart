@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -105,7 +105,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  /// --- Cálculo exacto de meses entre dos fechas (como en la pantalla de deudas)
+  /// --- CÃ¡lculo exacto de meses entre dos fechas (como en la pantalla de deudas)
   int mesesEntreFechas(DateTime inicio, DateTime fin) {
     int years = fin.year - inicio.year;
     int months = fin.month - inicio.month;
@@ -114,7 +114,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
     return totalMonths > 0 ? totalMonths : 0;
   }
 
-  /// --- Carga cuotas y calcula el total de pagos y pagos restantes usando cálculo exacto de meses
+  /// --- Carga cuotas y calcula el total de pagos y pagos restantes usando cÃ¡lculo exacto de meses
   Future<void> _cargarCuotasYActualizarSugerida() async {
     final listaCuotas = await _cuotaRepo.getCuotasPorSimuladorId(
       _simuladorActual.id!,
@@ -190,7 +190,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
     if (monto > 999999.99) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('El monto máximo permitido es Q999,999.99'),
+          content: Text('El monto mÃ¡ximo permitido es Q999,999.99'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -266,42 +266,36 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            dialogTheme: DialogTheme(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: AlertDialog(
-            title: const Text(
-              'Confirmar eliminación',
-              style: TextStyle(color: AppColors.primary),
-            ),
-            content: const Text(
-              '¿Estás seguro de que deseas eliminar esta cuota?',
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancelar'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Eliminar'),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _cuotaRepo.deleteCuotaAhorro(cuota.id!, _userId!);
-                  await _cargarCuotasYActualizarSugerida();
-                  _limpiarCampos();
-                },
-              ),
-            ],
+          title: const Text(
+            'Confirmar eliminaciÃ³n',
+            style: TextStyle(color: AppColors.primary),
           ),
+          content: const Text(
+            'Â¿EstÃ¡s seguro de que deseas eliminar esta cuota?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Eliminar'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _cuotaRepo.deleteCuotaAhorro(cuota.id!, _userId!);
+                await _cargarCuotasYActualizarSugerida();
+                _limpiarCampos();
+              },
+            ),
+          ],
         );
       },
     );
@@ -358,7 +352,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "El plazo del ahorro ya se cumplió y aún no lograste tu meta. "
+                  "El plazo del ahorro ya se cumpliÃ³ y aÃºn no lograste tu meta. "
                   "Por favor, considera ampliar el plazo si no lograste ahorrar lo suficiente.",
                   style: TextStyle(
                     color: Colors.orange[900],
@@ -425,7 +419,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Información general del ahorro
+            // InformaciÃ³n general del ahorro
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -488,7 +482,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
               _buildAdvertenciaYBotonEditar(context),
             ],
             const SizedBox(height: 24),
-            // Sección para agregar cuotas
+            // SecciÃ³n para agregar cuotas
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -669,7 +663,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    '¡Felicidades! Has completado tu meta de ahorro.',
+                                    'Â¡Felicidades! Has completado tu meta de ahorro.',
                                     style: TextStyle(
                                       color: AppColors.textDark,
                                       fontWeight: FontWeight.bold,
@@ -694,7 +688,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
                                 ),
                                 label: Text(
                                   _editingCuotaId != null
-                                      ? 'Guardar Edición'
+                                      ? 'Guardar EdiciÃ³n'
                                       : 'Guardar Cuota',
                                   style: const TextStyle(color: Colors.white),
                                 ),
@@ -767,7 +761,7 @@ class _DatosAhorroContentState extends State<DatosAhorroContent> {
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Center(
                           child: Text(
-                            'No hay cuotas registradas aún',
+                            'No hay cuotas registradas aÃºn',
                             style: TextStyle(color: Colors.grey),
                           ),
                         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/repositories/simulador_deuda_repository.dart';
 import '../../data/models/simulador_deuda.dart';
+import '../../notifications/notification_service.dart';
 import '../widgets/global_components.dart';
 import '../providers/user_provider.dart';
 import 'package:intl/intl.dart';
@@ -142,7 +143,7 @@ class _DeudasRegistradasContentState extends State<DeudasRegistradasContent> {
   }
 
   // Eliminar simulador desde la BD
-  Future<void> _eliminarSimulador(int id) async {
+  Future<void> _eliminarSimulador(SimuladorDeudaConProgreso simuladorProg) async {
     if (_userId == null) return;
     final confirm = await showDialog(
       context: context,
@@ -177,7 +178,11 @@ class _DeudasRegistradasContentState extends State<DeudasRegistradasContent> {
     );
 
     if (confirm == true) {
-      await _repo.deleteSimuladorDeuda(id, _userId!);
+      await _repo.deleteSimuladorDeuda(simuladorProg.deuda.id!, _userId!);
+      await NotificationService().cancelDeudaNotificationsForSimulador(
+        simuladorProg.deuda,
+        _userId!,
+      );
       await _cargarSimuladores();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -380,7 +385,7 @@ class _DeudasRegistradasContentState extends State<DeudasRegistradasContent> {
                                   color: AppColors.error,
                                   tooltip: 'Eliminar',
                                   onPressed:
-                                      () => _eliminarSimulador(simulador.id!),
+                                      () => _eliminarSimulador(simuladorProg),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                 ),

@@ -16,6 +16,7 @@ import '../../data/models/repositories/simulador_ahorro_repository.dart';
 import '../../data/models/repositories/simulador_deuda_repository.dart';
 import '../../data/models/repositories/tarjeta_credito_repository.dart';
 import '../../data/models/repositories/tarjeta_debito_repository.dart';
+import '../../sms/sms_listener.dart';
 
 /// Paleta de colores de la aplicación
 class AppColors {
@@ -223,6 +224,7 @@ class _IniciarSesionState extends State<IniciarSesion>
 
       // Aquí inicializas e agendas notificaciones del usuario logueado
       await _programarNotificacionesAutomaticas(user.id!);
+      await SmsListenerService.start(user.id!);
 
       _showSuccessAndNavigate();
       setState(

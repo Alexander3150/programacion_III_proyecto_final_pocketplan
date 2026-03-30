@@ -198,8 +198,8 @@ class _EditarSimuladorDeAhorrosContentState
     await _repo.updateSimuladorAhorro(ahorroActualizado, _userId!);
 
     // Primero cancela todas las notificaciones relacionadas a este ahorro
-    /* await NotificationService().cancelAhorroNotifications(
-      ahorroActualizado.id!,
+    await NotificationService().cancelAhorroNotificationsForSimulador(
+      ahorroActualizado,
       _userId!,
     );
 
@@ -207,7 +207,7 @@ class _EditarSimuladorDeAhorrosContentState
     await NotificationService().scheduleAhorroNotifications(
       ahorroActualizado,
       _userId!,
-    );*/
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

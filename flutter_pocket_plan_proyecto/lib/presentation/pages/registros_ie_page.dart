@@ -889,6 +889,7 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         monto: _monto,
         concepto: _concepto,
         etiqueta: _etiquetaIngreso,
+        origen: 'manual',
         createdAt: DateTime.now(),
       );
 
@@ -932,6 +933,7 @@ class _RegistroMovimientoTabsState extends State<_RegistroMovimientoTabs>
         tipoTarjeta: _selectedCardType,
         opcionPago: _creditPaymentOption,
         cuotas: _installments,
+        origen: 'manual',
         createdAt: DateTime.now(),
       );
 

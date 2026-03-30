@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +8,7 @@ import '../../data/models/simulador_deuda.dart';
 import '../../data/models/cuota_pago.dart';
 import '../widgets/global_components.dart';
 import '../providers/user_provider.dart';
-import 'editar_simulador_de_deudas_page.dart'; // Importa tu pantalla de edición
+import 'editar_simulador_de_deudas_page.dart'; // Importa tu pantalla de ediciÃ³n
 
 class DatosDeudaPage extends StatefulWidget {
   final SimuladorDeuda simulador;
@@ -93,7 +93,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  /// Cálculo exacto de meses entre dos fechas (ignora días para ser exacto en meses)
+  /// CÃ¡lculo exacto de meses entre dos fechas (ignora dÃ­as para ser exacto en meses)
   int mesesEntreFechas(DateTime inicio, DateTime fin) {
     int years = fin.year - inicio.year;
     int months = fin.month - inicio.month;
@@ -222,7 +222,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
     if (montoPagado > 999999.99) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('El monto máximo permitido es Q999,999.99'),
+          content: Text('El monto mÃ¡ximo permitido es Q999,999.99'),
           backgroundColor: Colors.red,
         ),
       );
@@ -296,43 +296,37 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            dialogTheme: DialogTheme(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: AlertDialog(
-            title: const Text(
-              'Confirmar eliminación',
-              style: TextStyle(color: Color(0xFF2E7D32)),
-            ),
-            content: const Text(
-              '¿Estás seguro de que deseas eliminar esta cuota?',
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancelar'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Eliminar'),
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _repoCuota.deleteCuotaPago(cuota.id!, _userId!);
-                  await _cargarCuotasYActualizarPagoSugerido();
-                  await _actualizarSimuladorDeuda();
-                  _limpiarCampos();
-                },
-              ),
-            ],
+          title: const Text(
+            'Confirmar eliminaciÃ³n',
+            style: TextStyle(color: Color(0xFF2E7D32)),
           ),
+          content: const Text(
+            'Â¿EstÃ¡s seguro de que deseas eliminar esta cuota?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Eliminar'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _repoCuota.deleteCuotaPago(cuota.id!, _userId!);
+                await _cargarCuotasYActualizarPagoSugerido();
+                await _actualizarSimuladorDeuda();
+                _limpiarCampos();
+              },
+            ),
+          ],
         );
       },
     );
@@ -441,7 +435,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            "El plazo de la deuda ya se cumplió y aún no lograste cancelarla.\n"
+                            "El plazo de la deuda ya se cumpliÃ³ y aÃºn no lograste cancelarla.\n"
                             "Por favor, considera ampliar el plazo si no lograste cancelar la deuda en el tiempo establecido.",
                             style: TextStyle(
                               color: Colors.orange[900],
@@ -695,7 +689,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
                       ),
                       if (camposBloqueados && !plazoCumplidoYNoCancelada)
                         Text(
-                          '¡Deuda completada!',
+                          'Â¡Deuda completada!',
                           style: TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -715,7 +709,7 @@ class _DatosDeudaContentState extends State<DatosDeudaContent>
                     icon: const Icon(Icons.save, size: 20),
                     label: Text(
                       _editingCuotaId != null
-                          ? 'Guardar Edición'
+                          ? 'Guardar EdiciÃ³n'
                           : 'Guardar Cuota',
                     ),
                     style: ElevatedButton.styleFrom(

@@ -3,6 +3,7 @@ import 'package:flutter_pocket_plan_proyecto/data/models/credit_card_model.dart'
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/database/bd_implementation.dart';
+import 'sms_auto_rule_repository.dart';
 
 class TarjetaCreditoRepository {
   final dbHelper = DatabaseHelper();
@@ -49,6 +50,11 @@ class TarjetaCreditoRepository {
 
   Future<int> deleteTarjetaCredito(int id, int userId) async {
     final db = await dbHelper.database;
+    await SmsAutoRuleRepository().deleteRuleByCard(
+      userId,
+      id,
+      'Crédito',
+    );
     return await db.delete(
       DatabaseHelper.creditCardTable,
       where: 'id = ? AND user_id = ?',

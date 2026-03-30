@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -34,8 +34,9 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static bool _timeZoneInitialized = false;
+  static const String _tzName = 'America/Guatemala';
 
-  // --------- NUEVO: Constante para rango de días máximo a programar ---------
+  // --------- NUEVO: Constante para rango de dÃ­as mÃ¡ximo a programar ---------
   static const int MAX_DIAS_A_PROGRAMAR = 30;
 
   bool _estaDentroDeRango(DateTime fechaEvento) {
@@ -44,10 +45,11 @@ class NotificationService {
     return fechaEvento.isAfter(ahora) && fechaEvento.isBefore(limite);
   }
 
-  /// Inicialización única, llamarla solo una vez en main()
+  /// InicializaciÃ³n Ãºnica, llamarla solo una vez en main()
   Future<void> initialize() async {
     if (!_timeZoneInitialized) {
       tz_data.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation(_tzName));
       _timeZoneInitialized = true;
     }
     await _requestNotificationPermission();
@@ -57,7 +59,7 @@ class NotificationService {
     const initializationSettings = InitializationSettings(android: android);
 
     await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         _handleNotificationTap(details.payload);
       },
@@ -79,7 +81,7 @@ class NotificationService {
     }
   }
 
-  // === Crear canales de notificación ===
+  // === Crear canales de notificaciÃ³n ===
   Future<void> _createNotificationChannels() async {
     final androidPlugin =
         flutterLocalNotificationsPlugin
@@ -92,61 +94,100 @@ class NotificationService {
         'registro_transacciones',
         'Registro Diario',
         description: 'Recordatorio diario para registrar movimientos',
-        importance: Importance.max,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'simulador_ahorro',
         'Simulador de Ahorro',
         description: 'Recordatorios para simuladores de ahorro',
-        importance: Importance.max,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'simulador_deuda',
         'Simulador de Deuda',
         description: 'Recordatorios para simuladores de deuda',
-        importance: Importance.max,
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'pago_tarjeta',
         'Pago Tarjeta',
         description: 'Recordatorio de pago de tarjeta',
         importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'expiracion_tarjeta',
-        'Expiración de Tarjeta',
-        description: 'Recordatorio de expiración de tarjeta',
-        importance: Importance.max,
+        'ExpiraciÃ³n de Tarjeta',
+        description: 'Recordatorio de expiraciÃ³n de tarjeta',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'tarjeta_credito_pago',
-        'Pago de Tarjeta de Crédito',
-        description: 'Pago de tarjeta de crédito',
+        'Pago de Tarjeta de CrÃ©dito',
+        description: 'Pago de tarjeta de crÃ©dito',
         importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'tarjeta_credito_corte',
-        'Corte de Tarjeta de Crédito',
-        description: 'Fecha de corte de tarjeta de crédito',
-        importance: Importance.max,
+        'Corte de Tarjeta de CrÃ©dito',
+        description: 'Fecha de corte de tarjeta de crÃ©dito',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'tarjeta_credito_expiracion',
-        'Expiración de Tarjeta de Crédito',
-        description: 'Expiración de tarjeta de crédito',
-        importance: Importance.max,
+        'ExpiraciÃ³n de Tarjeta de CrÃ©dito',
+        description: 'ExpiraciÃ³n de tarjeta de crÃ©dito',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'tarjeta_debito_expiracion',
-        'Expiración de Tarjeta de Débito',
-        description: 'Expiración de tarjeta de débito',
-        importance: Importance.max,
+        'ExpiraciÃ³n de Tarjeta de DÃ©bito',
+        description: 'ExpiraciÃ³n de tarjeta de dÃ©bito',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
       AndroidNotificationChannel(
         'test_channel',
         'Pruebas',
-        description: 'Canal de pruebas instantáneas',
+        description: 'Canal de pruebas instantÃ¡neas',
         importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      ),
+      AndroidNotificationChannel(
+        'auto_movimientos',
+        'Movimientos AutomÃ¡ticos',
+        description: 'Notificaciones por movimientos detectados en SMS',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
     ];
 
@@ -244,7 +285,7 @@ class NotificationService {
       tz_data.initializeTimeZones();
       _timeZoneInitialized = true;
     }
-    final location = tz.getLocation('America/Guatemala');
+    final location = tz.local;
     final tzScheduled = tz.TZDateTime.from(scheduledDate, location);
     final tzNow = tz.TZDateTime.now(location);
     print('[Debug TZ] tzNow: $tzNow | tzScheduled: $tzScheduled');
@@ -253,12 +294,12 @@ class NotificationService {
     if (!tzScheduled.isAfter(tzNow)) {
       safeScheduled = tzScheduled.add(const Duration(days: 1));
       print(
-        '[Notificaciones] La fecha programada estaba en el pasado/presente. Se ajustó automáticamente: $safeScheduled',
+        '[Notificaciones] La fecha programada estaba en el pasado/presente. Se ajustÃ³ automÃ¡ticamente: $safeScheduled',
       );
     }
     if (!safeScheduled.isAfter(tzNow)) {
       print(
-        '[Notificaciones][ERROR] No se puede programar la notificación (ID: $id) porque la fecha es pasada: $safeScheduled',
+        '[Notificaciones][ERROR] No se puede programar la notificaciÃ³n (ID: $id) porque la fecha es pasada: $safeScheduled',
       );
       return;
     }
@@ -272,17 +313,17 @@ class NotificationService {
     }
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      safeScheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: safeScheduled,
+      notificationDetails: details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: payload,
       matchDateTimeComponents: matchDateTimeComponents,
     );
 
-    print('[Notificaciones] Notificación programada para: $safeScheduled');
+    print('[Notificaciones] NotificaciÃ³n programada para: $safeScheduled');
   }
 
   // ===================== PROGRAMAR NOTIFICACIONES =====================
@@ -297,19 +338,49 @@ class NotificationService {
       '[Debug Programada] Local: $programadaPara - UTC: ${programadaPara.toUtc()}',
     );
     await flutterLocalNotificationsPlugin.show(
-      99999,
-      'Pocket Plan',
-      '¡Esta es una notificación de prueba!',
-      const NotificationDetails(
+      id: 99999,
+      title: 'Pocket Plan',
+      body: 'Â¡Esta es una notificaciÃ³n de prueba!',
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'test_channel',
           'Pruebas',
-          channelDescription: 'Canal de pruebas instantáneas',
-          importance: Importance.max,
+          channelDescription: 'Canal de pruebas instantÃ¡neas',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
       payload: 'registro',
+    );
+  }
+
+  Future<void> showAutoMovementNotification({
+    required String tipo,
+    required double monto,
+  }) async {
+    final isIngreso = tipo.toLowerCase() == 'ingreso';
+    final title = 'Movimiento registrado';
+    final body =
+        '${isIngreso ? 'Ingreso' : 'Gasto'} de Q${monto.toStringAsFixed(2)}';
+
+    await flutterLocalNotificationsPlugin.show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'auto_movimientos',
+          'Movimientos AutomÃ¡ticos',
+          channelDescription:
+              'Notificaciones por movimientos detectados en SMS',
+          importance: Importance.high,
+          priority: Priority.high,
+          channelShowBadge: true,
+        ),
+      ),
     );
   }
 
@@ -326,14 +397,17 @@ class NotificationService {
     await _tryZonedSchedule(
       id: 123456,
       title: 'Pocket Plan (Prueba programada)',
-      body: 'Notificación programada de prueba para dentro de 10 segundos.',
+      body: 'NotificaciÃ³n programada de prueba para dentro de 10 segundos.',
       scheduledDate: programadaPara,
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'test_channel',
           'Pruebas',
-          channelDescription: 'Canal de pruebas instantáneas',
-          importance: Importance.max,
+          channelDescription: 'Canal de pruebas instantÃ¡neas',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -351,15 +425,18 @@ class NotificationService {
 
     await NotificationService()._tryZonedSchedule(
       id: 123457,
-      title: 'Prueba Rápida',
-      body: 'Notificación programada para 20 segundos después.',
+      title: 'Prueba RÃ¡pida',
+      body: 'NotificaciÃ³n programada para 20 segundos despuÃ©s.',
       scheduledDate: programadaPara,
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'test_channel',
           'Pruebas',
-          channelDescription: 'Canal de pruebas instantáneas',
-          importance: Importance.max,
+          channelDescription: 'Canal de pruebas instantÃ¡neas',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -377,14 +454,17 @@ class NotificationService {
       id: notificationId,
       title: 'Pocket Plan',
       body:
-          '¡Recuerda registrar tus ingresos y egresos de hoy para llevar un buen control de tus finanzas! 📒💡',
+          'Â¡Recuerda registrar tus ingresos y egresos de hoy para llevar un buen control de tus finanzas! ðŸ“’ðŸ’¡',
       scheduledDate: _nextInstanceOfTime(hour, minute),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'registro_transacciones',
           'Registro Diario',
           channelDescription: 'Recordatorio diario para registrar movimientos',
-          importance: Importance.max,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -473,14 +553,17 @@ class NotificationService {
       id: id,
       title: 'Pocket Plan',
       body:
-          '¡Recuerda! Mañana te toca ahorrar para "$objetivo".\nTe quedan $pagosRestantes pago(s) para alcanzar tu meta. ($friendlyDate)',
+          'Â¡Recuerda! MaÃ±ana te toca ahorrar para "$objetivo".\nTe quedan $pagosRestantes pago(s) para alcanzar tu meta. ($friendlyDate)',
       scheduledDate: _nextInstanceOfDate(hour, minute, notificationDate),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'simulador_ahorro',
           'Simulador de Ahorro',
           channelDescription: 'Recordatorio para simuladores de ahorro',
-          importance: Importance.max,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -504,14 +587,17 @@ class NotificationService {
       id: idBase + 10000 + extra,
       title: 'Pocket Plan',
       body:
-          '¡Hoy es el día para ahorrar en tu meta "$objetivo"! Solo te quedan $pagosRestantes pago(s) para culminar tu objetivo. No pierdas el ritmo, ¡tú puedes lograrlo! 🚀',
+          'Â¡Hoy es el dÃ­a para ahorrar en tu meta "$objetivo"! Solo te quedan $pagosRestantes pago(s) para culminar tu objetivo. No pierdas el ritmo, Â¡tÃº puedes lograrlo! ðŸš€',
       scheduledDate: _nextInstanceOfDate(hour, minute, fechaPago),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'simulador_ahorro',
           'Simulador de Ahorro',
           channelDescription: 'Recordatorio para simuladores de ahorro',
-          importance: Importance.max,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -599,14 +685,17 @@ class NotificationService {
       id: id,
       title: 'Pocket Plan',
       body:
-          '¡Recuerda! Mañana tienes que realizar un pago por tu deuda "$motivo".\nTe quedan $pagosRestantes pago(s) para finalizar. ($friendlyDate)',
+          'Â¡Recuerda! MaÃ±ana tienes que realizar un pago por tu deuda "$motivo".\nTe quedan $pagosRestantes pago(s) para finalizar. ($friendlyDate)',
       scheduledDate: _nextInstanceOfDate(hour, minute, notificationDate),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'simulador_deuda',
           'Simulador de Deuda',
           channelDescription: 'Recordatorio para simuladores de deuda',
-          importance: Importance.max,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -630,14 +719,17 @@ class NotificationService {
       id: idBase + 10000 + extra,
       title: 'Pocket Plan',
       body:
-          '¡Hoy es el día para realizar tu pago de la deuda "$motivo"! Solo te quedan $pagosRestantes pago(s) para terminar. Mantente al día y evita recargos. 💸',
+          'Â¡Hoy es el dÃ­a para realizar tu pago de la deuda "$motivo"! Solo te quedan $pagosRestantes pago(s) para terminar. Mantente al dÃ­a y evita recargos. ðŸ’¸',
       scheduledDate: _nextInstanceOfDate(hour, minute, fechaPago),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'simulador_deuda',
           'Simulador de Deuda',
           channelDescription: 'Recordatorio para simuladores de deuda',
-          importance: Importance.max,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -645,7 +737,7 @@ class NotificationService {
     );
   }
 
-  // --------- 4. Tarjeta de Crédito (pago, corte, expiración, ambos días) ---------
+  // --------- 4. Tarjeta de CrÃ©dito (pago, corte, expiraciÃ³n, ambos dÃ­as) ---------
   Future<void> scheduleCreditCardNotifications(
     CreditCard tarjeta,
     int userId,
@@ -693,7 +785,7 @@ class NotificationService {
         );
       } else {
         print(
-          '[Notificaciones][SKIP] Fecha de pago de tarjeta crédito $fechaPago fuera de rango.',
+          '[Notificaciones][SKIP] Fecha de pago de tarjeta crÃ©dito $fechaPago fuera de rango.',
         );
       }
     }
@@ -737,12 +829,12 @@ class NotificationService {
         );
       } else {
         print(
-          '[Notificaciones][SKIP] Fecha de corte de tarjeta crédito $fechaCorte fuera de rango.',
+          '[Notificaciones][SKIP] Fecha de corte de tarjeta crÃ©dito $fechaCorte fuera de rango.',
         );
       }
     }
 
-    // EXPIRACIÓN
+    // EXPIRACIÃ“N
     DateTime? fechaExp = _fechaExpiracion(tarjeta.expiracion);
     if (fechaExp != null &&
         fechaExp.isAfter(DateTime.now()) &&
@@ -751,7 +843,7 @@ class NotificationService {
         id: expBase + 1,
         tarjetaId: tarjeta.id!,
         userId: userId,
-        tipoTarjeta: 'Crédito',
+        tipoTarjeta: 'CrÃ©dito',
         banco: tarjeta.banco,
         nombrePropietario: tarjeta.alias,
         fechaExpiracion: fechaExp,
@@ -762,7 +854,7 @@ class NotificationService {
         idBase: expBase + 1,
         tarjetaId: tarjeta.id!,
         userId: userId,
-        tipo: 'Crédito',
+        tipo: 'CrÃ©dito',
         banco: tarjeta.banco,
         propietario: tarjeta.alias,
         fechaExpiracion: fechaExp,
@@ -774,7 +866,7 @@ class NotificationService {
         idBase: expBase + 1,
         tarjetaId: tarjeta.id!,
         userId: userId,
-        tipo: 'Crédito',
+        tipo: 'CrÃ©dito',
         banco: tarjeta.banco,
         propietario: tarjeta.alias,
         fechaExpiracion: fechaExp,
@@ -784,7 +876,7 @@ class NotificationService {
       );
     } else {
       print(
-        '[Notificaciones][SKIP] Fecha de expiración de tarjeta crédito $fechaExp fuera de rango.',
+        '[Notificaciones][SKIP] Fecha de expiraciÃ³n de tarjeta crÃ©dito $fechaExp fuera de rango.',
       );
     }
   }
@@ -804,14 +896,17 @@ class NotificationService {
       id: id,
       title: 'Pocket Plan',
       body:
-          'Mañana es la fecha de pago de tu tarjeta de crédito en $banco.\nPropietario: $nombrePropietario.\nEvita cargos extra y mantén tu crédito al día.',
+          'MaÃ±ana es la fecha de pago de tu tarjeta de crÃ©dito en $banco.\nPropietario: $nombrePropietario.\nEvita cargos extra y mantÃ©n tu crÃ©dito al dÃ­a.',
       scheduledDate: _nextInstanceOfDate(hour, minute, notificationDate),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'pago_tarjeta',
-          'Pago Tarjeta de Crédito',
-          channelDescription: 'Recordatorio de pago de tarjeta de crédito',
-          importance: Importance.max,
+          'Pago Tarjeta de CrÃ©dito',
+          channelDescription: 'Recordatorio de pago de tarjeta de crÃ©dito',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -834,14 +929,17 @@ class NotificationService {
       id: idBase + 10000 + extra,
       title: 'Pocket Plan',
       body:
-          '¡Hoy es tu fecha de pago de la tarjeta de crédito "$banco" ($propietario)! Recuerda mantenerte al día para evitar intereses.',
+          'Â¡Hoy es tu fecha de pago de la tarjeta de crÃ©dito "$banco" ($propietario)! Recuerda mantenerte al dÃ­a para evitar intereses.',
       scheduledDate: _nextInstanceOfDate(hour, minute, fechaPago),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'tarjeta_credito_pago',
-          'Pago de Tarjeta de Crédito',
-          channelDescription: 'Recordatorio de pago de tarjeta de crédito',
-          importance: Importance.max,
+          'Pago de Tarjeta de CrÃ©dito',
+          channelDescription: 'Recordatorio de pago de tarjeta de crÃ©dito',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -864,14 +962,17 @@ class NotificationService {
       id: id,
       title: 'Pocket Plan',
       body:
-          '¡Atención! Mañana es la fecha de corte de tu tarjeta de crédito en $banco.\nPropietario: $nombrePropietario.\nRecuerda que tu saldo se actualizará.',
+          'Â¡AtenciÃ³n! MaÃ±ana es la fecha de corte de tu tarjeta de crÃ©dito en $banco.\nPropietario: $nombrePropietario.\nRecuerda que tu saldo se actualizarÃ¡.',
       scheduledDate: _nextInstanceOfDate(hour, minute, notificationDate),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
-          'corte_tarjeta',
-          'Corte Tarjeta de Crédito',
-          channelDescription: 'Recordatorio de corte de tarjeta de crédito',
-          importance: Importance.max,
+          'tarjeta_credito_corte',
+          'Corte Tarjeta de CrÃ©dito',
+          channelDescription: 'Recordatorio de corte de tarjeta de crÃ©dito',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -894,15 +995,18 @@ class NotificationService {
       id: idBase + 10000 + extra,
       title: 'Pocket Plan',
       body:
-          '¡Hoy es tu fecha de corte de la tarjeta "$banco" ($propietario)! Se actualizará tu saldo, asegúrate de estar solvente.',
+          'Â¡Hoy es tu fecha de corte de la tarjeta "$banco" ($propietario)! Se actualizarÃ¡ tu saldo, asegÃºrate de estar solvente.',
       scheduledDate: _nextInstanceOfDate(hour, minute, fechaCorte),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'tarjeta_credito_corte',
-          'Corte de Tarjeta de Crédito',
+          'Corte de Tarjeta de CrÃ©dito',
           channelDescription:
-              'Recordatorio de fecha de corte de tarjeta de crédito',
-          importance: Importance.max,
+              'Recordatorio de fecha de corte de tarjeta de crÃ©dito',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
@@ -926,19 +1030,22 @@ class NotificationService {
       id: id,
       title: 'Pocket Plan',
       body:
-          '¡Importante! Mañana es la fecha de expiración de tu tarjeta $tipoTarjeta en $banco.\nPropietario: $nombrePropietario. Considera renovarla para seguir usando tus servicios.',
+          'Â¡Importante! MaÃ±ana es la fecha de expiraciÃ³n de tu tarjeta $tipoTarjeta en $banco.\nPropietario: $nombrePropietario. Considera renovarla para seguir usando tus servicios.',
       scheduledDate: _nextInstanceOfDate(hour, minute, notificationDate),
       details: const NotificationDetails(
         android: AndroidNotificationDetails(
           'expiracion_tarjeta',
-          'Expiración de Tarjeta',
-          channelDescription: 'Recordatorio de expiración de tarjetas',
-          importance: Importance.max,
+          'ExpiraciÃ³n de Tarjeta',
+          channelDescription: 'Recordatorio de expiraciÃ³n de tarjetas',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
       payload:
-          tipoTarjeta.toLowerCase() == 'crédito'
+          tipoTarjeta.toLowerCase() == 'crÃ©dito'
               ? 'tarjeta_credito:$tarjetaId:$userId:expira_manana'
               : 'tarjeta_debito:$tarjetaId:$userId:expira_manana',
     );
@@ -960,29 +1067,32 @@ class NotificationService {
       id: idBase + 10000 + extra,
       title: 'Pocket Plan',
       body:
-          '¡Hoy es la fecha de expiración de tu tarjeta $tipo "$banco" ($propietario)! Recuerda renovarla para seguir usándola.',
+          'Â¡Hoy es la fecha de expiraciÃ³n de tu tarjeta $tipo "$banco" ($propietario)! Recuerda renovarla para seguir usÃ¡ndola.',
       scheduledDate: _nextInstanceOfDate(hour, minute, fechaExpiracion),
       details: NotificationDetails(
         android: AndroidNotificationDetails(
-          tipo.toLowerCase() == 'crédito'
+          tipo.toLowerCase() == 'crÃ©dito'
               ? 'tarjeta_credito_expiracion'
               : 'tarjeta_debito_expiracion',
-          tipo.toLowerCase() == 'crédito'
-              ? 'Expiración de Tarjeta de Crédito'
-              : 'Expiración de Tarjeta de Débito',
-          channelDescription: 'Recordatorio de expiración de tarjeta',
-          importance: Importance.max,
+          tipo.toLowerCase() == 'crÃ©dito'
+              ? 'ExpiraciÃ³n de Tarjeta de CrÃ©dito'
+              : 'ExpiraciÃ³n de Tarjeta de DÃ©bito',
+          channelDescription: 'Recordatorio de expiraciÃ³n de tarjeta',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        channelShowBadge: true,
           priority: Priority.high,
         ),
       ),
       payload:
-          tipo.toLowerCase() == 'crédito'
+          tipo.toLowerCase() == 'crÃ©dito'
               ? 'tarjeta_credito:$tarjetaId:$userId:expira_hoy'
               : 'tarjeta_debito:$tarjetaId:$userId:expira_hoy',
     );
   }
 
-  // --------- 5. Tarjeta de Débito ---------
+  // --------- 5. Tarjeta de DÃ©bito ---------
   Future<void> scheduleDebitCardNotifications(
     DebitCard tarjeta,
     int userId,
@@ -995,7 +1105,7 @@ class NotificationService {
         id: expBase + 1,
         tarjetaId: tarjeta.id!,
         userId: userId,
-        tipoTarjeta: 'Débito',
+        tipoTarjeta: 'DÃ©bito',
         banco: tarjeta.banco,
         nombrePropietario: tarjeta.alias,
         fechaExpiracion: fechaExpiracion,
@@ -1006,7 +1116,7 @@ class NotificationService {
         idBase: expBase + 1,
         tarjetaId: tarjeta.id!,
         userId: userId,
-        tipo: 'Débito',
+        tipo: 'DÃ©bito',
         banco: tarjeta.banco,
         propietario: tarjeta.alias,
         fechaExpiracion: fechaExpiracion,
@@ -1015,7 +1125,7 @@ class NotificationService {
       );
     } else {
       print(
-        '[Notificaciones][SKIP] Fecha de expiración de tarjeta débito $fechaExpiracion fuera de rango, no se programa.',
+        '[Notificaciones][SKIP] Fecha de expiraciÃ³n de tarjeta dÃ©bito $fechaExpiracion fuera de rango, no se programa.',
       );
     }
   }
@@ -1158,13 +1268,13 @@ class NotificationService {
       }
     } catch (_) {}
     throw FormatException(
-      "Formato de expiración inválido: $expiracion. Usa MM/yy, MM-yyyy, yyyy-MM, o MM/yyyy",
+      "Formato de expiraciÃ³n invÃ¡lido: $expiracion. Usa MM/yy, MM-yyyy, yyyy-MM, o MM/yyyy",
     );
   }
 
   // ===================== CANCELAR NOTIFICACIONES =====================
   Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
+    await flutterLocalNotificationsPlugin.cancel(id: id);
   }
 
   Future<void> cancelAll() async {
@@ -1173,44 +1283,74 @@ class NotificationService {
 
   Future<void> cancelAhorroNotifications(int ahorroId, int userId) async {
     final int baseId = (ahorroId ?? 10000 + userId) * 10;
-    await cancelNotification(baseId + 1); // un día antes
+    await cancelNotification(baseId + 1); // un dÃ­a antes
     await cancelNotification(baseId + 1 + 10000); // Hoy 9am
     await cancelNotification(baseId + 1 + 10001); // Hoy 3pm
   }
 
+  Future<void> cancelAhorroNotificationsForSimulador(
+    SimuladorAhorro ahorro,
+    int userId,
+  ) async {
+    if (ahorro.id == null) return;
+    final int baseId = (ahorro.id ?? 10000 + userId) * 10;
+    final int totalPagos = _calcularPagosTotales(ahorro);
+    for (int i = 0; i < totalPagos; i++) {
+      final int notifId = baseId + i + 1;
+      await cancelNotification(notifId); // un dÃ­a antes
+      await cancelNotification(notifId + 10000); // Hoy 9am
+      await cancelNotification(notifId + 10001); // Hoy 3pm
+    }
+  }
+
   Future<void> cancelDeudaNotifications(int deudaId, int userId) async {
     final int baseId = (deudaId ?? 30000 + userId) * 10;
-    // Un día antes
+    // Un dÃ­a antes
     await cancelNotification(baseId + 1);
 
-    // Mero día (9am y 3pm, extra: 0 y extra: 1)
+    // Mero dÃ­a (9am y 3pm, extra: 0 y extra: 1)
     await cancelNotification(baseId + 1 + 10000); // 9am
     await cancelNotification(baseId + 1 + 10001); // 3pm
+  }
+
+  Future<void> cancelDeudaNotificationsForSimulador(
+    SimuladorDeuda deuda,
+    int userId,
+  ) async {
+    if (deuda.id == null) return;
+    final int baseId = (deuda.id ?? 30000 + userId) * 10;
+    final int totalPagos = _calcularPagosTotalesDeuda(deuda);
+    for (int i = 0; i < totalPagos; i++) {
+      final int notifId = baseId + i + 1;
+      await cancelNotification(notifId); // un dÃ­a antes
+      await cancelNotification(notifId + 10000); // 9am
+      await cancelNotification(notifId + 10001); // 3pm
+    }
   }
 
   Future<void> cancelCreditCardNotifications(int tarjetaId, int userId) async {
     // Pago
     final int pagoBase = (tarjetaId ?? 50000 + userId) * 10;
-    await cancelNotification(pagoBase + 1); // Un día antes
+    await cancelNotification(pagoBase + 1); // Un dÃ­a antes
     await cancelNotification(pagoBase + 1 + 10000); // Hoy 9am
     await cancelNotification(pagoBase + 1 + 10001); // Hoy 3pm
 
     // Corte
     final int corteBase = (tarjetaId ?? 60000 + userId) * 10;
-    await cancelNotification(corteBase + 1); // Un día antes
+    await cancelNotification(corteBase + 1); // Un dÃ­a antes
     await cancelNotification(corteBase + 1 + 10000); // Hoy 9am
     await cancelNotification(corteBase + 1 + 10001); // Hoy 3pm
 
-    // Expiración
+    // ExpiraciÃ³n
     final int expBase = (tarjetaId ?? 70000 + userId) * 10;
-    await cancelNotification(expBase + 1); // Un día antes
+    await cancelNotification(expBase + 1); // Un dÃ­a antes
     await cancelNotification(expBase + 1 + 10000); // Hoy 9am
     await cancelNotification(expBase + 1 + 10001); // Hoy 3pm
   }
 
   Future<void> cancelDebitCardNotifications(int tarjetaId, int userId) async {
     final int expBase = (tarjetaId ?? 80000 + userId) * 10;
-    await cancelNotification(expBase + 1); // Un día antes
+    await cancelNotification(expBase + 1); // Un dÃ­a antes
     await cancelNotification(expBase + 1 + 10000); // Hoy 9am
     await cancelNotification(expBase + 1 + 10001); // Hoy 3pm
   }

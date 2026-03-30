@@ -229,14 +229,14 @@ class _EditarSimuladorDeDeudasContentState
     );
 
     await _repo.updateSimuladorDeuda(deudaActualizada, _userId!);
-    /* await NotificationService().cancelDeudaNotifications(
-      deudaActualizada.id!,
+    await NotificationService().cancelDeudaNotificationsForSimulador(
+      deudaActualizada,
       _userId!,
     );
     await NotificationService().scheduleDeudaNotifications(
       deudaActualizada,
       _userId!,
-    );*/
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

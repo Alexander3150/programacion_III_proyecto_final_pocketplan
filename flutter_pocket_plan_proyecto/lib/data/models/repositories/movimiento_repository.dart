@@ -17,6 +17,15 @@ class MovimientoRepository {
     );
   }
 
+  Future<int> insertMovimientoAuto(Movimiento movimiento) async {
+    final db = await dbHelper.database;
+    return await db.insert(
+      DatabaseHelper.movimientoTable,
+      movimiento.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
   Future<List<Movimiento>> getMovimientosByUser(int userId) async {
     final db = await dbHelper.database;
     final maps = await db.query(
@@ -37,6 +46,33 @@ class MovimientoRepository {
       orderBy: 'fecha DESC',
     );
     return List.generate(maps.length, (i) => Movimiento.fromMap(maps[i]));
+  }
+
+  Future<List<Movimiento>> getMovimientosByTarjeta(
+    int userId,
+    int tarjetaId,
+    String tipoTarjeta,
+  ) async {
+    final db = await dbHelper.database;
+    final maps = await db.query(
+      DatabaseHelper.movimientoTable,
+      where: 'user_id = ? AND tarjeta_id = ? AND tipo_tarjeta = ?',
+      whereArgs: [userId, tarjetaId, tipoTarjeta],
+      orderBy: 'fecha DESC',
+    );
+    return List.generate(maps.length, (i) => Movimiento.fromMap(maps[i]));
+  }
+
+  Future<bool> existsSmsKey(int userId, String smsKey) async {
+    final db = await dbHelper.database;
+    final maps = await db.query(
+      DatabaseHelper.movimientoTable,
+      columns: ['id'],
+      where: 'user_id = ? AND sms_key = ?',
+      whereArgs: [userId, smsKey],
+      limit: 1,
+    );
+    return maps.isNotEmpty;
   }
 
   Future<int> updateMovimiento(Movimiento movimiento) async {

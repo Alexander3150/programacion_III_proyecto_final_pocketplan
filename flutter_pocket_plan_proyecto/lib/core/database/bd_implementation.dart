@@ -17,7 +17,7 @@ import '../../data/models/movimiento_model.dart';
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
-  final int _version = 8; // ¡Aumenta la versión si cambias estructura!
+  final int _version = 9; // ¡Aumenta la versión si cambias estructura!
 
   // Nombres de tablas
   static const String userTable = 'users';
@@ -26,6 +26,7 @@ class DatabaseHelper {
   static const String simuladorAhorroTable = 'simulador_ahorro';
   static const String simuladorDeudaTable = 'simulador_deuda';
   static const String movimientoTable = 'movimientos';
+  static const String smsAutoRuleTable = 'sms_auto_rules';
   static const String cuotaAhorroTable = 'cuotas_ahorro';
   static const String cuotaPagoTable = 'cuotas_pago';
 
@@ -106,6 +107,11 @@ class DatabaseHelper {
         tipo_tarjeta TEXT,
         opcion_pago TEXT,
         cuotas INTEGER,
+        origen TEXT,
+        sms_key TEXT,
+        sms_sender TEXT,
+        sms_auth TEXT,
+        sms_raw TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES $userTable(id) ON DELETE CASCADE
       )
@@ -175,6 +181,33 @@ class DatabaseHelper {
     await db.execute(
       'CREATE INDEX idx_movimiento_tarjeta ON $movimientoTable(tarjeta_id)',
     );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_movimiento_sms_key ON $movimientoTable(sms_key)',
+    );
+
+    await db.execute('''
+      CREATE TABLE $smsAutoRuleTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        tarjeta_id INTEGER NOT NULL,
+        tipo_tarjeta TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        sender TEXT NOT NULL,
+        prefix TEXT NOT NULL,
+        identifier TEXT NOT NULL,
+        identifier_type TEXT NOT NULL,
+        alias TEXT,
+        bank TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES $userTable(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_sms_rule_user ON $smsAutoRuleTable(user_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sms_rule_identifier ON $smsAutoRuleTable(identifier)',
+    );
   }
 
   // --- Migraciones de versión ---
@@ -242,6 +275,49 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       await db.execute(
         'ALTER TABLE $creditCardTable ADD COLUMN ultima_actualizacion_saldo TEXT',
+      );
+    }
+    if (oldVersion < 9) {
+      await db.execute(
+        'ALTER TABLE $movimientoTable ADD COLUMN origen TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE $movimientoTable ADD COLUMN sms_key TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE $movimientoTable ADD COLUMN sms_sender TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE $movimientoTable ADD COLUMN sms_auth TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE $movimientoTable ADD COLUMN sms_raw TEXT',
+      );
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS $smsAutoRuleTable (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          tarjeta_id INTEGER NOT NULL,
+          tipo_tarjeta TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 0,
+          sender TEXT NOT NULL,
+          prefix TEXT NOT NULL,
+          identifier TEXT NOT NULL,
+          identifier_type TEXT NOT NULL,
+          alias TEXT,
+          bank TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES $userTable(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_movimiento_sms_key ON $movimientoTable(sms_key)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sms_rule_user ON $smsAutoRuleTable(user_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sms_rule_identifier ON $smsAutoRuleTable(identifier)',
       );
     }
   }
